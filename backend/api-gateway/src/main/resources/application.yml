@@ -1,0 +1,45 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/**
+        
+        - id: ticket-service
+          uri: lb://ticket-service
+          predicates:
+            - Path=/api/tickets/**
+            
+        - id: pipeline-service
+          uri: lb://pipeline-service
+          predicates:
+            - Path=/api/pipelines/**
+            
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KC_AUTH_SERVER_URL:http://localhost:9090}/realms/${KC_REALM:pipe-dev-liv}
+          jwk-set-uri: ${KC_AUTH_SERVER_URL:http://localhost:9090}/realms/${KC_REALM:pipe-dev-liv}/protocol/openid-connect/certs
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:8761}/eureka/
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    org.springframework.security: INFO
