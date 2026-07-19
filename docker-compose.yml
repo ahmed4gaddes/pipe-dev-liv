@@ -1,0 +1,237 @@
+###############################################################################
+#                  PIPE-DEV-LIV — Docker Compose (Infrastructure)            #
+#                                                                             #
+#  Ce fichier contient tous les services d'infrastructure nécessaires au      #
+#  développement local. Les microservices applicatifs seront ajoutés dans     #
+#  docker-compose.dev.yml / test.yml / prod.yml (Phase 9).                   #
+#                                                                             #
+#  Utilisation :                                                              #
+#    docker compose up -d                   → Tout démarrer                   #
+#    docker compose up -d postgres-tickets  → Démarrer un seul service        #
+#    docker compose down                    → Tout arrêter                    #
+#    docker compose down -v                 → Tout arrêter + supprimer data   #
+###############################################################################
+
+services:
+
+  # =====================================================================
+  #  BASES DE DONNÉES — Une par microservice (Database per Service)
+  # =====================================================================
+
+  postgres-users:
+    image: postgres:16-alpine
+    container_name: pipe-postgres-users
+    environment:
+      POSTGRES_DB: users_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_users_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d users_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  postgres-tickets:
+    image: postgres:16-alpine
+    container_name: pipe-postgres-tickets
+    environment:
+      POSTGRES_DB: tickets_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_tickets_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d tickets_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  postgres-pipelines:
+    image: postgres:16-alpine
+    container_name: pipe-postgres-pipelines
+    environment:
+      POSTGRES_DB: pipelines_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_pipelines_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d pipelines_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  postgres-notifications:
+    image: postgres:16-alpine
+    container_name: pipe-postgres-notifications
+    environment:
+      POSTGRES_DB: notifications_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_notifications_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d notifications_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  postgres-audit:
+    image: postgres:16-alpine
+    container_name: pipe-postgres-audit
+    environment:
+      POSTGRES_DB: audit_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres_audit_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d audit_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # =====================================================================
+  #  KEYCLOAK — Gestion d'identité (IAM / SSO)
+  # =====================================================================
+
+  postgres-keycloak:
+    image: postgres:16-alpine
+    container_name: pipe-postgres-keycloak
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: ${KC_DB_USER}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
+    volumes:
+      - postgres_keycloak_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KC_DB_USER} -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    container_name: pipe-keycloak
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-keycloak:5432/keycloak
+      KC_DB_USERNAME: ${KC_DB_USER}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_HOSTNAME: localhost
+      KC_HTTP_PORT: 9090
+      KEYCLOAK_ADMIN: ${KC_ADMIN_USER}
+      KEYCLOAK_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
+    ports:
+      - "9090:9090"
+    depends_on:
+      postgres-keycloak:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # =====================================================================
+  #  RABBITMQ — Message Broker (communication asynchrone inter-services)
+  # =====================================================================
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: pipe-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD}
+    ports:
+      - "5672:5672"      # AMQP (pour les microservices)
+      - "15672:15672"    # Management UI → http://localhost:15672
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  # =====================================================================
+  #  SONARQUBE — Analyse de qualité et sécurité du code
+  # =====================================================================
+
+  postgres-sonar:
+    image: postgres:16-alpine
+    container_name: pipe-postgres-sonar
+    environment:
+      POSTGRES_DB: sonar
+      POSTGRES_USER: ${SONAR_DB_USER}
+      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD}
+    volumes:
+      - postgres_sonar_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${SONAR_DB_USER} -d sonar"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: pipe-sonarqube
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://postgres-sonar:5432/sonar
+      SONAR_JDBC_USERNAME: ${SONAR_DB_USER}
+      SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD}
+    ports:
+      - "9000:9000"      # SonarQube UI → http://localhost:9000
+    depends_on:
+      postgres-sonar:
+        condition: service_healthy
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+    restart: unless-stopped
+
+  # =====================================================================
+  #  ZIPKIN — Tracing distribué (optionnel mais recommandé)
+  # =====================================================================
+
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: pipe-zipkin
+    ports:
+      - "9411:9411"      # Zipkin UI → http://localhost:9411
+    restart: unless-stopped
+
+# =====================================================================
+#  VOLUMES PERSISTANTS
+# =====================================================================
+
+volumes:
+  postgres_users_data:
+  postgres_tickets_data:
+  postgres_pipelines_data:
+  postgres_notifications_data:
+  postgres_audit_data:
+  postgres_keycloak_data:
+  postgres_sonar_data:
+  rabbitmq_data:
+  sonarqube_data:
+  sonarqube_logs:
+  sonarqube_extensions:
