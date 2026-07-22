@@ -1,12 +1,14 @@
 package com.pipedevliv.user.service;
 
 import com.pipedevliv.common.dto.PageResponse;
+import com.pipedevliv.common.event.RabbitMQConstants;
 import com.pipedevliv.common.exception.ResourceNotFoundException;
 import com.pipedevliv.user.dto.UserDTO;
 import com.pipedevliv.user.dto.UserSyncDTO;
 import com.pipedevliv.user.entity.UserProfile;
 import com.pipedevliv.user.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserServiceImpl implements UserService {
 
     private final UserProfileRepository userProfileRepository;
+    private final RabbitTemplate rabbitTemplate;
 
     @Override
     public PageResponse<UserDTO> getAllUsers(Pageable pageable) {
@@ -53,7 +56,9 @@ public class UserServiceImpl implements UserService {
                         .roles(syncDTO.getRoles())
                         .build());
 
-        return toDTO(userProfileRepository.save(profile));
+        UserDTO synced = toDTO(userProfileRepository.save(profile));
+        rabbitTemplate.convertAndSend(RabbitMQConstants.EXCHANGE, RabbitMQConstants.USER_SYNCED, synced);
+        return synced;
     }
 
     private UserDTO toDTO(UserProfile profile) {
