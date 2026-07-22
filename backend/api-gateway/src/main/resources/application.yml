@@ -39,6 +39,16 @@ eureka:
     service-url:
       defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:8761}/eureka/
 
+# Secret partagé injecté dans le header X-Internal-Secret sur chaque requête proxyfiée vers
+# un microservice, pour prouver que la requête est bien passée par la Gateway (voir
+# common-lib SecurityConfig / HeaderAuthenticationFilter côté microservices).
+security:
+  internal:
+    gateway-secret: ${GATEWAY_INTERNAL_SECRET}
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
 logging:
   level:
     org.springframework.cloud.gateway: INFO
