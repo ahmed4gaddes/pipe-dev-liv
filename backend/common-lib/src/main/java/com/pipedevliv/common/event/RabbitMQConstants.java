@@ -8,6 +8,7 @@ public final class RabbitMQConstants {
     public static final String EXCHANGE = "pipe-dev-liv.events";
     
     // Routing keys
+    public static final String USER_SYNCED         = "user.synced";
     public static final String TICKET_CREATED      = "ticket.created";
     public static final String TICKET_STATUS_CHANGED = "ticket.status-changed";
     public static final String TICKET_APPROVED     = "ticket.approved";

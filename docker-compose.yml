@@ -1,15 +1,20 @@
 ###############################################################################
 #                  PIPE-DEV-LIV — Docker Compose (Infrastructure)            #
 #                                                                             #
-#  Ce fichier contient tous les services d'infrastructure nécessaires au      #
-#  développement local. Les microservices applicatifs seront ajoutés dans     #
-#  docker-compose.dev.yml / test.yml / prod.yml (Phase 9).                   #
+#  Ce fichier contient l'infrastructure et les microservices applicatifs déjà #
+#  conteneurisés. Les autres microservices seront ajoutés au fur et à mesure  #
+#  de leur implémentation (docker-compose.dev.yml / test.yml / prod.yml       #
+#  dédiés viendront en Phase 9 pour séparer les environnements).             #
 #                                                                             #
 #  Utilisation :                                                              #
 #    docker compose up -d                   → Tout démarrer                   #
 #    docker compose up -d postgres-tickets  → Démarrer un seul service        #
 #    docker compose down                    → Tout arrêter                    #
 #    docker compose down -v                 → Tout arrêter + supprimer data   #
+#                                                                             #
+#  NB : user-service attend un jar déjà construit (Dockerfile mono-stage) :   #
+#    mvn -pl user-service -am package -DskipTests   (depuis backend/)         #
+#    puis : docker compose up -d --build user-service                        #
 ###############################################################################
 
 services:
@@ -168,6 +173,40 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
+    restart: unless-stopped
+
+  # =====================================================================
+  #  MICROSERVICES APPLICATIFS
+  # =====================================================================
+
+  user-service:
+    build:
+      context: ./backend/user-service
+      dockerfile: Dockerfile
+    container_name: pipe-user-service
+    environment:
+      DB_HOST: postgres-users
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      RABBIT_HOST: rabbitmq
+      RABBIT_PORT: 5672
+      RABBIT_USER: ${RABBIT_USER}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD}
+      # discovery-server et api-gateway ne sont pas encore conteneurisés : ils tournent
+      # sur la machine hôte (mvn spring-boot:run / IDE), d'où le passage par host.docker.internal.
+      EUREKA_HOST: ${EUREKA_HOST:-host.docker.internal}
+      EUREKA_PORT: ${EUREKA_PORT:-8761}
+      GATEWAY_INTERNAL_SECRET: ${GATEWAY_INTERNAL_SECRET}
+    ports:
+      - "8081:8081"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres-users:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     restart: unless-stopped
 
   # =====================================================================
