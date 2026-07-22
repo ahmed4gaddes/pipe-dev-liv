@@ -1,0 +1,39 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: ticket-service
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5434}/tickets_db
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  rabbitmq:
+    host: ${RABBIT_HOST:localhost}
+    port: ${RABBIT_PORT:5672}
+    username: ${RABBIT_USER}
+    password: ${RABBIT_PASSWORD}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:8761}/eureka/
+
+# Requis par common-lib (HeaderAuthenticationFilter) : sans ça le service refuse de démarrer.
+security:
+  internal:
+    gateway-secret: ${GATEWAY_INTERNAL_SECRET}
+
+logging:
+  level:
+    com.pipedevliv.ticket: DEBUG

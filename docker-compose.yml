@@ -209,6 +209,34 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  ticket-service:
+    build:
+      context: ./backend/ticket-service
+      dockerfile: Dockerfile
+    container_name: pipe-ticket-service
+    environment:
+      DB_HOST: postgres-tickets
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      RABBIT_HOST: rabbitmq
+      RABBIT_PORT: 5672
+      RABBIT_USER: ${RABBIT_USER}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD}
+      EUREKA_HOST: ${EUREKA_HOST:-host.docker.internal}
+      EUREKA_PORT: ${EUREKA_PORT:-8761}
+      GATEWAY_INTERNAL_SECRET: ${GATEWAY_INTERNAL_SECRET}
+    ports:
+      - "8082:8082"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres-tickets:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
   # =====================================================================
   #  SONARQUBE — Analyse de qualité et sécurité du code
   # =====================================================================
