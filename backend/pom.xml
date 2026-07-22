@@ -45,6 +45,24 @@
         </dependencies>
     </dependencyManagement>
 
+    <build>
+        <pluginManagement>
+            <plugins>
+                <!-- Force le répertoire de travail (racine du repo) pour "mvnw ... spring-boot:run",
+                     pour qu'il corresponde à celui utilisé par IntelliJ (constaté : $PROJECT_DIR$),
+                     et que spring-dotenv (voir dépendance ci-dessous) trouve le .env au même endroit
+                     quelle que soit la façon dont le service est lancé. -->
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <configuration>
+                        <workingDirectory>${maven.multiModuleProjectDirectory}/..</workingDirectory>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
     <dependencies>
         <!-- Dépendances communes à tous les modules -->
         <dependency>
@@ -55,6 +73,14 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <!-- Charge le .env de la racine du repo dans l'Environment Spring Boot au démarrage.
+             Chaque module doit fournir un .env.properties (src/main/resources) avec
+             directory=../../ pour pointer vers la racine depuis backend/<module>/. -->
+        <dependency>
+            <groupId>me.paulschwarz</groupId>
+            <artifactId>spring-dotenv</artifactId>
+            <version>4.0.0</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
