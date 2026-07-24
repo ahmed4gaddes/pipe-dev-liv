@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pipedevliv.common.dto.PageResponse;
 import com.pipedevliv.common.exception.GlobalExceptionHandler;
 import com.pipedevliv.common.security.SecurityConfig;
+import com.pipedevliv.ticket.dto.PipelineStatusUpdateDTO;
 import com.pipedevliv.ticket.dto.TicketCommentCreateDTO;
 import com.pipedevliv.ticket.dto.TicketCommentDTO;
 import com.pipedevliv.ticket.dto.TicketCreateDTO;
@@ -207,6 +208,34 @@ class TicketControllerTest {
         mockMvc.perform(post("/api/tickets/1/deploy/DEV"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("DEPLOYING_DEV"));
+    }
+
+    @Test
+    void updatePipelineStatus_asSystem_succeeds() throws Exception {
+        authenticateAs("pipeline-service", "ROLE_SYSTEM");
+        when(ticketService.updatePipelineStatus(eq(1L), any(), eq("pipeline-service")))
+                .thenReturn(ticket(1L, TicketStatus.DEPLOYED_DEV));
+
+        mockMvc.perform(patch("/api/tickets/1/pipeline-status")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(
+                                PipelineStatusUpdateDTO.builder().pipelineExecutionId(42L).environment("DEV").status("SUCCESS").build())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("DEPLOYED_DEV"));
+    }
+
+    @Test
+    void updatePipelineStatus_asTechLeadWithoutSystemRole_forbidden() throws Exception {
+        // Un humain, même TECH_LEAD/ADMIN, ne doit jamais pouvoir appeler cet endpoint interne :
+        // ROLE_SYSTEM n'est délivré par aucun JWT Keycloak, seul le FeignConfig de pipeline-service
+        // le pose. La RoleHierarchy ne fait pas non plus remonter ROLE_SYSTEM vers un rôle humain.
+        authenticateAs("tl-1", "ROLE_TECH_LEAD");
+
+        mockMvc.perform(patch("/api/tickets/1/pipeline-status")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(
+                                PipelineStatusUpdateDTO.builder().pipelineExecutionId(42L).environment("DEV").status("SUCCESS").build())))
+                .andExpect(status().isForbidden());
     }
 
     @Test

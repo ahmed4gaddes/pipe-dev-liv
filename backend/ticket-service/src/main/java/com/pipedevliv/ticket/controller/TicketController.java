@@ -2,6 +2,7 @@ package com.pipedevliv.ticket.controller;
 
 import com.pipedevliv.common.dto.ApiResponse;
 import com.pipedevliv.common.dto.PageResponse;
+import com.pipedevliv.ticket.dto.PipelineStatusUpdateDTO;
 import com.pipedevliv.ticket.dto.TicketActionCommentDTO;
 import com.pipedevliv.ticket.dto.TicketCommentCreateDTO;
 import com.pipedevliv.ticket.dto.TicketCommentDTO;
@@ -96,6 +97,12 @@ public class TicketController {
     @PreAuthorize("hasRole('TECH_LEAD')")
     public ApiResponse<TicketResponseDTO> deploy(@PathVariable Long id, @PathVariable String env) {
         return ApiResponse.success(ticketService.deploy(id, env, currentUserId()), "Déploiement déclenché");
+    }
+
+    @PatchMapping("/{id}/pipeline-status")
+    @PreAuthorize("hasRole('SYSTEM')")
+    public ApiResponse<TicketResponseDTO> updatePipelineStatus(@PathVariable Long id, @RequestBody PipelineStatusUpdateDTO dto) {
+        return ApiResponse.success(ticketService.updatePipelineStatus(id, dto, currentUserId()), "Statut de déploiement mis à jour");
     }
 
     @GetMapping("/{id}/history")

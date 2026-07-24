@@ -30,6 +30,12 @@ public class GatewaySecurityConfig {
                 .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Healthcheck Docker / pipeline de déploiement (Phase 9)
                 .pathMatchers("/actuator/health/**").permitAll()
+                // Webhooks GitHub (Phase 5) : GitHub ne peut pas présenter de JWT Keycloak.
+                // L'authenticité est prouvée par la signature HMAC (X-Hub-Signature-256),
+                // vérifiée manuellement par pipeline-service, pas par la chaîne OAuth2 ici.
+                // JwtAuthFilter retire quand même tout header X-User-*/X-Internal-Secret
+                // usurpé par le client avant que la requête ne poursuive.
+                .pathMatchers("/api/webhooks/**").permitAll()
                 // Toutes les autres requêtes doivent être authentifiées par un JWT
                 .anyExchange().authenticated()
             )

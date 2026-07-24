@@ -237,6 +237,38 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  pipeline-service:
+    build:
+      context: ./backend/pipeline-service
+      dockerfile: Dockerfile
+    container_name: pipe-pipeline-service
+    environment:
+      DB_HOST: postgres-pipelines
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      RABBIT_HOST: rabbitmq
+      RABBIT_PORT: 5672
+      RABBIT_USER: ${RABBIT_USER}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD}
+      EUREKA_HOST: ${EUREKA_HOST:-host.docker.internal}
+      EUREKA_PORT: ${EUREKA_PORT:-8761}
+      GATEWAY_INTERNAL_SECRET: ${GATEWAY_INTERNAL_SECRET}
+      GH_PAT_TOKEN: ${GH_PAT_TOKEN}
+      GH_WEBHOOK_SECRET: ${GH_WEBHOOK_SECRET}
+      GH_OWNER: ${GH_OWNER}
+      GH_REPO: ${GH_REPO}
+    ports:
+      - "8083:8083"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres-pipelines:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
   # =====================================================================
   #  SONARQUBE — Analyse de qualité et sécurité du code
   # =====================================================================

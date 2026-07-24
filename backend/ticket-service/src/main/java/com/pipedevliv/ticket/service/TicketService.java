@@ -1,6 +1,7 @@
 package com.pipedevliv.ticket.service;
 
 import com.pipedevliv.common.dto.PageResponse;
+import com.pipedevliv.ticket.dto.PipelineStatusUpdateDTO;
 import com.pipedevliv.ticket.dto.TicketCommentCreateDTO;
 import com.pipedevliv.ticket.dto.TicketCommentDTO;
 import com.pipedevliv.ticket.dto.TicketCreateDTO;
@@ -33,6 +34,8 @@ public interface TicketService {
     TicketResponseDTO reject(Long id, String comment, String actingUserId);
 
     TicketResponseDTO deploy(Long id, String env, String actingUserId);
+
+    TicketResponseDTO updatePipelineStatus(Long id, PipelineStatusUpdateDTO dto, String actingUserId);
 
     List<TicketHistoryDTO> getHistory(Long id);
 
