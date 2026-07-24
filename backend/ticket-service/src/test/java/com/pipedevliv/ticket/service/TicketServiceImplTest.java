@@ -4,6 +4,7 @@ import com.pipedevliv.common.dto.ApiResponse;
 import com.pipedevliv.common.exception.BusinessException;
 import com.pipedevliv.common.exception.ResourceNotFoundException;
 import com.pipedevliv.ticket.dto.PipelineExecutionDTO;
+import com.pipedevliv.ticket.dto.PipelineStatusUpdateDTO;
 import com.pipedevliv.ticket.dto.TicketCommentCreateDTO;
 import com.pipedevliv.ticket.dto.TicketCreateDTO;
 import com.pipedevliv.ticket.dto.TicketResponseDTO;
@@ -196,6 +197,47 @@ class TicketServiceImplTest {
         TicketResponseDTO result = ticketService.deploy(1L, "dev", "tl-1");
 
         assertThat(result.getStatus()).isEqualTo(TicketStatus.DEPLOYING_DEV);
+    }
+
+    @Test
+    void updatePipelineStatus_success_movesToDeployedDev() {
+        Ticket ticket = existingTicket(TicketStatus.DEPLOYING_DEV);
+        when(ticketRepository.findById(1L)).thenReturn(Optional.of(ticket));
+        when(ticketRepository.save(any(Ticket.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        PipelineStatusUpdateDTO dto = PipelineStatusUpdateDTO.builder()
+                .pipelineExecutionId(42L).environment("DEV").status("SUCCESS").build();
+
+        TicketResponseDTO result = ticketService.updatePipelineStatus(1L, dto, "pipeline-service");
+
+        assertThat(result.getStatus()).isEqualTo(TicketStatus.DEPLOYED_DEV);
+        verify(eventPublisher).publishStatusChanged(any(Ticket.class), eq(TicketStatus.DEPLOYING_DEV), eq("pipeline-service"));
+    }
+
+    @Test
+    void updatePipelineStatus_failure_movesToFailed() {
+        Ticket ticket = existingTicket(TicketStatus.DEPLOYING_PROD);
+        when(ticketRepository.findById(1L)).thenReturn(Optional.of(ticket));
+        when(ticketRepository.save(any(Ticket.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        PipelineStatusUpdateDTO dto = PipelineStatusUpdateDTO.builder()
+                .pipelineExecutionId(42L).environment("PROD").status("FAILED").build();
+
+        TicketResponseDTO result = ticketService.updatePipelineStatus(1L, dto, "pipeline-service");
+
+        assertThat(result.getStatus()).isEqualTo(TicketStatus.FAILED);
+    }
+
+    @Test
+    void updatePipelineStatus_ticketNotDeploying_throwsBusinessException() {
+        Ticket ticket = existingTicket(TicketStatus.DRAFT);
+        when(ticketRepository.findById(1L)).thenReturn(Optional.of(ticket));
+
+        PipelineStatusUpdateDTO dto = PipelineStatusUpdateDTO.builder()
+                .pipelineExecutionId(42L).environment("DEV").status("SUCCESS").build();
+
+        assertThatThrownBy(() -> ticketService.updatePipelineStatus(1L, dto, "pipeline-service"))
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test

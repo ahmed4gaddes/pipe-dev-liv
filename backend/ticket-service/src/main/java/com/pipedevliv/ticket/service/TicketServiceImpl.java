@@ -3,6 +3,7 @@ package com.pipedevliv.ticket.service;
 import com.pipedevliv.common.dto.PageResponse;
 import com.pipedevliv.common.exception.BusinessException;
 import com.pipedevliv.common.exception.ResourceNotFoundException;
+import com.pipedevliv.ticket.dto.PipelineStatusUpdateDTO;
 import com.pipedevliv.ticket.dto.PipelineTriggerDTO;
 import com.pipedevliv.ticket.dto.TicketCommentCreateDTO;
 import com.pipedevliv.ticket.dto.TicketCommentDTO;
@@ -226,6 +227,31 @@ public class TicketServiceImpl implements TicketService {
         ticket = ticketRepository.save(ticket);
 
         writeHistory(ticket, oldStatus, actingUserId, "Déploiement " + normalizedEnv + " déclenché");
+        eventPublisher.publishStatusChanged(ticket, oldStatus, actingUserId);
+
+        return toDTO(ticket);
+    }
+
+    @Override
+    @Transactional
+    public TicketResponseDTO updatePipelineStatus(Long id, PipelineStatusUpdateDTO dto, String actingUserId) {
+        Ticket ticket = findTicketOrThrow(id);
+        TicketStatus oldStatus = ticket.getStatus();
+
+        TicketStatus newStatus = switch (oldStatus) {
+            case DEPLOYING_DEV -> "SUCCESS".equals(dto.getStatus()) ? TicketStatus.DEPLOYED_DEV : TicketStatus.FAILED;
+            case DEPLOYING_TEST -> "SUCCESS".equals(dto.getStatus()) ? TicketStatus.DEPLOYED_TEST : TicketStatus.FAILED;
+            case DEPLOYING_PROD -> "SUCCESS".equals(dto.getStatus()) ? TicketStatus.DEPLOYED_PROD : TicketStatus.FAILED;
+            default -> throw new BusinessException(
+                    "Le ticket n'est pas en cours de déploiement (statut actuel : " + oldStatus + ")");
+        };
+
+        stateMachine.validateTransition(oldStatus, newStatus);
+        ticket.setStatus(newStatus);
+        ticket = ticketRepository.save(ticket);
+
+        writeHistory(ticket, oldStatus, actingUserId,
+                "Pipeline " + dto.getEnvironment() + " : " + dto.getStatus());
         eventPublisher.publishStatusChanged(ticket, oldStatus, actingUserId);
 
         return toDTO(ticket);

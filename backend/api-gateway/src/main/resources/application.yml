@@ -26,7 +26,12 @@ spring:
           uri: lb://pipeline-service
           predicates:
             - Path=/api/pipelines/**
-            
+
+        - id: pipeline-webhooks
+          uri: lb://pipeline-service
+          predicates:
+            - Path=/api/webhooks/**
+
   security:
     oauth2:
       resourceserver:

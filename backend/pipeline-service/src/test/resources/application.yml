@@ -1,0 +1,11 @@
+security:
+  internal:
+    gateway-secret: test-secret
+
+github:
+  api-base-url: https://api.github.com
+  token: test-token
+  owner: test-owner
+  repo: test-repo
+  webhook-secret: test-webhook-secret
+  workflow-file: deploy.yml

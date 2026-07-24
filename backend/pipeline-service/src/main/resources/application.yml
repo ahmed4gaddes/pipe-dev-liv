@@ -1,0 +1,48 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: pipeline-service
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5435}/pipelines_db
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  rabbitmq:
+    host: ${RABBIT_HOST:localhost}
+    port: ${RABBIT_PORT:5672}
+    username: ${RABBIT_USER}
+    password: ${RABBIT_PASSWORD}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:8761}/eureka/
+
+# Requis par common-lib (HeaderAuthenticationFilter) : sans ça le service refuse de démarrer.
+security:
+  internal:
+    gateway-secret: ${GATEWAY_INTERNAL_SECRET}
+
+# GitHub Actions API + vérification de signature des webhooks entrants.
+github:
+  api-base-url: https://api.github.com
+  token: ${GH_PAT_TOKEN}
+  owner: ${GH_OWNER}
+  repo: ${GH_REPO}
+  webhook-secret: ${GH_WEBHOOK_SECRET}
+  workflow-file: deploy.yml
+
+logging:
+  level:
+    com.pipedevliv.pipeline: DEBUG
