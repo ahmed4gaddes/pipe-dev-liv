@@ -1,0 +1,29 @@
+.card {
+  background: #fff;
+  border: 1px solid var(--color-gray-100);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-5);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-accent-navy::before,
+.card-accent-sky::before,
+.card-accent-gold::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+.card-accent-navy::before {
+  background: var(--color-navy);
+}
+.card-accent-sky::before {
+  background: var(--color-sky);
+}
+.card-accent-gold::before {
+  background: linear-gradient(90deg, var(--color-gold), var(--color-gold-600));
+}

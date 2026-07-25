@@ -1,0 +1,60 @@
+.pipeline-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.pipeline-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.ticket-id {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-gray-400);
+  letter-spacing: 0.04em;
+}
+
+.ticket-title {
+  font-size: 22px;
+  margin-top: 2px;
+}
+
+.ticket-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.chip {
+  background: var(--color-gray-100);
+  color: var(--color-gray-600);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+}
+
+.chip-mono {
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.chip-link {
+  background: var(--color-navy-100);
+  color: var(--color-navy);
+}
+.chip-link:hover {
+  text-decoration: none;
+  background: var(--color-navy);
+  color: #fff;
+}
+
+.section-title {
+  font-size: 15px;
+  margin-bottom: var(--space-4);
+}

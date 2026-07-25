@@ -263,6 +263,17 @@ class TicketControllerTest {
     }
 
     @Test
+    void getComments_asViewer_succeeds() throws Exception {
+        authenticateAs("viewer-1", "ROLE_VIEWER");
+        when(ticketService.getComments(1L)).thenReturn(List.of(
+                TicketCommentDTO.builder().id(1L).ticketId(1L).authorUserId("dev-1").content("LGTM").build()));
+
+        mockMvc.perform(get("/api/tickets/1/comments"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].content").value("LGTM"));
+    }
+
+    @Test
     void getStats_asAdmin_succeeds() throws Exception {
         authenticateAs("admin-1", "ROLE_ADMIN");
         when(ticketService.getStats()).thenReturn(TicketStatsDTO.builder().totalTickets(5).build());
