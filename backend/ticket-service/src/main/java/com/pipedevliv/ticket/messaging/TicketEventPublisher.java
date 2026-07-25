@@ -35,6 +35,8 @@ public class TicketEventPublisher {
                 .oldStatus(oldStatus)
                 .newStatus(ticket.getStatus())
                 .changedByUserId(changedByUserId)
+                .createdByUserId(ticket.getCreatedByUserId())
+                .assignedToUserId(ticket.getAssignedToUserId())
                 .timestamp(LocalDateTime.now())
                 .build();
     }

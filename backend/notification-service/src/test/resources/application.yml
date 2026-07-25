@@ -1,0 +1,3 @@
+security:
+  internal:
+    gateway-secret: test-secret

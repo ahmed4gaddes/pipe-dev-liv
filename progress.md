@@ -1,4 +1,60 @@
-# Progress Log — 2026-07-22 / 2026-07-24
+# Progress Log — 2026-07-22 / 2026-07-25
+
+## 2026-07-25 — Phase 6 (Notification Service)
+
+### What we accomplished
+
+- Planned Phase 6 via plan mode (explored notification-service's stub pom comment "Email, Websockets etc à rajouter plus tard", the pre-existing unused `postgres-notifications` container, `RabbitMQConstants.NOTIFICATION_QUEUE`, and the fact that no service consumed any published event yet), confirmed scope with the user (in-app notifications only — no email/WebSocket, matching the pom's own comment and the total absence of SMTP config anywhere in `.env`), then implemented the full plan.
+- Built the real `notification-service` module end-to-end: `Notification`/`LocalUser` entities+repositories, a `RabbitMQConfig` that declares the queue/bindings for all 7 relevant routing keys plus a `DefaultJackson2JavaTypeMapper` mapping each producer's FQCN to a local mirror DTO (solves the `__TypeId__` cross-service deserialization problem without sharing DTO classes via `common-lib`), a `NotificationListener` + `NotificationServiceImpl` implementing the recipient-resolution rules per event type, and the `/api/notifications` REST API (list/unread-count/mark-read/mark-all-read).
+- Added two small additive fields to already-built (unmerged) services so recipients could actually be resolved: `TicketEvent.createdByUserId`/`assignedToUserId` (ticket-service) and `PipelineEvent.triggeredByUserId` (pipeline-service) — both non-breaking, no existing consumer before this phase.
+- Added the `api-gateway` route for `/api/notifications/**` — no security carve-out needed this time (unlike the Phase 5 webhook), every call here goes through the normal JWT flow.
+- Added `notification-service` to `docker-compose.yml` (port 8084, `postgres-notifications`, no `GH_*` vars needed).
+- Wrote the full test suite: 31 tests in `notification-service` (service-layer recipient-rule correctness per event type is the important coverage — role-based fan-out excluding the creator, owner+assignee excluding the actor, self-approval exclusion, pipeline events targeting the triggering user, ownership-checked mark-read). Full reactor build (`mvnw test`, all 9 real modules + the empty `audit-service` stub) is green.
+- Wrote `explication_phase_6.md`, matching the existing documentation style.
+
+#### Files modified/created
+
+**ticket-service**
+- `messaging/TicketEvent.java` (added `createdByUserId`, `assignedToUserId`)
+- `messaging/TicketEventPublisher.java` (populates the two new fields in `toEvent`)
+
+**pipeline-service**
+- `messaging/PipelineEvent.java` (added `triggeredByUserId`)
+- `messaging/PipelineEventPublisher.java` (populates the new field in `toEvent`)
+
+**api-gateway**
+- `application.yml` (new `notification-service` route, `/api/notifications/**` → `lb://notification-service`)
+
+**notification-service** (new module, filled in from the pom.xml/Dockerfile-only stub)
+- `pom.xml` (added `h2` test dep, `spring-boot-maven-plugin`)
+- `src/main/resources/{application.yml,.env.properties}`, `src/test/resources/application.yml`
+- `src/main/java/com/pipedevliv/notification/**` — `NotificationServiceApplication`; `entity/` (`Notification`, `NotificationType`, `LocalUser`); `repository/` (2 repos); `config/RabbitMQConfig` (queue + 7 bindings + type-mapped converter); `service/` (`NotificationListener`, `NotificationService`, `NotificationServiceImpl`); `controller/NotificationController`; `dto/` (6 DTOs incl. the 4 cross-service mirror payloads)
+- `src/test/java/com/pipedevliv/notification/**` — full mirrored test suite (service/repository/controller/listener layers)
+
+**docker-compose.yml** (added `notification-service`)
+
+**explication_phase_6.md** (new)
+
+#### Decisions made
+
+- **In-app notifications only** — confirmed with the user given the pom's own "add later" comment and no pre-reserved SMTP vars (unlike GitHub's vars before Phase 5). Email/WebSocket explicitly deferred, not stubbed.
+- **Mirror DTOs + `setIdClassMapping`, not shared event classes in `common-lib`** — keeps the coupling one-directional (consumer knows producer shapes; producers stay unaware of notification-service), avoids adding message-schema classes to the shared library.
+- **Two additive event fields** (`TicketEvent.createdByUserId`/`assignedToUserId`, `PipelineEvent.triggeredByUserId`) rather than a synchronous Feign lookup back into ticket-service/pipeline-service — keeps notification-service purely event-driven, no outbound calls at all.
+- **Local `LocalUser` read-model via `user.synced`**, not a Feign call to user-service — same "stay purely event-driven" reasoning; accepted limitation that a never-logged-in user won't receive role-based notifications yet.
+- **Ownership-checked REST API**: every endpoint only requires `hasRole('VIEWER')` (any authenticated user); the service layer enforces that a user can only read/mark-read their own notifications — same pattern as ticket ownership checks in Phase 4.
+
+#### Remaining tasks
+
+- Four stacked, unmerged branches now: `feature/phase3-user-service` → `feature/phase4-ticket-service` → `feature/phase5-pipeline-service` → `feature/phase6-notification-service`. Merge-order decision still not made.
+- No live multi-service smoke test of `notification-service` through the running Gateway was done this session (same gap as Phase 5's pipeline-service) — worth doing interactively next session: log in as two different users, create/approve/deploy a ticket, confirm `GET /api/notifications` shows the right rows for the right users.
+
+#### Next steps for tomorrow
+
+1. Decide merge order for the four stacked branches (or start merging Phase 3 → develop now that it's stable).
+2. Do a live multi-service smoke test of the new Notification Service endpoints (manual, through the running Gateway, two different logged-in users) — same style as the Phase 3 `/api/users/me` verification.
+3. Start Phase 7/8 or Phase 9 (CI/CD, `deploy.yml`) — Phase 9 would unblock a real GitHub Actions test of everything built in Phase 5, which would also flow through the notification pipeline built this phase.
+
+---
 
 ## 2026-07-24 — Phase 5 (Pipeline Service)
 

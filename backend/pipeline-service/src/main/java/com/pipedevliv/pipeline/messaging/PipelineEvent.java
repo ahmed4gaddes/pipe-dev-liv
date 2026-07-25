@@ -17,5 +17,6 @@ public class PipelineEvent {
     private Long ticketId;
     private String environment;
     private PipelineStatus status;
+    private String triggeredByUserId;
     private LocalDateTime timestamp;
 }

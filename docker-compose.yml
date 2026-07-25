@@ -269,6 +269,34 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  notification-service:
+    build:
+      context: ./backend/notification-service
+      dockerfile: Dockerfile
+    container_name: pipe-notification-service
+    environment:
+      DB_HOST: postgres-notifications
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      RABBIT_HOST: rabbitmq
+      RABBIT_PORT: 5672
+      RABBIT_USER: ${RABBIT_USER}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD}
+      EUREKA_HOST: ${EUREKA_HOST:-host.docker.internal}
+      EUREKA_PORT: ${EUREKA_PORT:-8761}
+      GATEWAY_INTERNAL_SECRET: ${GATEWAY_INTERNAL_SECRET}
+    ports:
+      - "8084:8084"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres-notifications:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
   # =====================================================================
   #  SONARQUBE — Analyse de qualité et sécurité du code
   # =====================================================================
