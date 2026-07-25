@@ -37,6 +37,11 @@ spring:
           predicates:
             - Path=/api/notifications/**
 
+        - id: audit-service
+          uri: lb://audit-service
+          predicates:
+            - Path=/api/audit-logs/**
+
   security:
     oauth2:
       resourceserver:
