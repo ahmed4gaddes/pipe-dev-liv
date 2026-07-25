@@ -18,5 +18,7 @@ public class TicketEvent {
     private TicketStatus oldStatus;
     private TicketStatus newStatus;
     private String changedByUserId;
+    private String createdByUserId;
+    private String assignedToUserId;
     private LocalDateTime timestamp;
 }

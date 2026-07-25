@@ -32,6 +32,11 @@ spring:
           predicates:
             - Path=/api/webhooks/**
 
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**
+
   security:
     oauth2:
       resourceserver:

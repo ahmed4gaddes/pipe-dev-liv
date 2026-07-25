@@ -32,6 +32,7 @@ public class PipelineEventPublisher {
                 .ticketId(execution.getTicketId())
                 .environment(execution.getEnvironment())
                 .status(execution.getStatus())
+                .triggeredByUserId(execution.getTriggeredByUserId())
                 .timestamp(LocalDateTime.now())
                 .build();
     }
