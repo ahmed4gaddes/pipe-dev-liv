@@ -1,5 +1,54 @@
 # Progress Log — 2026-07-22 / 2026-07-25
 
+## 2026-07-25 — Phase 7 (Audit Service)
+
+### What we accomplished
+
+- Asked the user directly which of three options Phase 7 should be (Audit Service / Frontend / CI-CD) since `progress.md` had left it open; confirmed Audit Service — finishes the backend microservices work before the frontend or CI/CD.
+- Planned Phase 7 via plan mode. Explored `audit-service`'s stub (same pom.xml/Dockerfile-only starting point pipeline-service and notification-service had), the unused `postgres-audit` container, and `RabbitMQConstants.AUDIT_QUEUE` (reserved since Phase 3, never consumed). Recognized this phase reuses Phase 6's mirror-DTO/`DefaultJackson2JavaTypeMapper` mechanism wholesale rather than re-solving the `__TypeId__` cross-service deserialization problem.
+- Built the real `audit-service` module: `AuditLog`/`AuditEventType` entity + a `search(...)` repository query mirroring `TicketRepository.search`'s established `(:param IS NULL OR ...)` pattern, the same `RabbitMQConfig` shape as notification-service (queue + 7 bindings + type-mapped converter, independent copy of the mirror DTOs — fuller than notification-service's since full traceability, not just recipient resolution, is the point), `AuditListener` + `AuditServiceImpl` (much simpler than `NotificationServiceImpl`: no recipient fan-out, exactly one immutable row per event, including `user.synced` itself this time), and `/api/audit-logs` (list with filters + get-by-id, both `hasRole('ADMIN')`, no mutation endpoints at all — immutability by simply not exposing PATCH/DELETE).
+- Added the `api-gateway` route for `/api/audit-logs/**` (no security carve-out needed, same as notification-service's route).
+- Added `audit-service` to `docker-compose.yml` (port 8085, `postgres-audit`, no `GH_*` vars).
+- Wrote the full test suite: 20 tests in `audit-service` (extraction-rule correctness per event type, repository filter combinations, ADMIN-only controller access). Full reactor build (`mvnw test`, all 9 real modules) is green.
+- Wrote `explication_phase_7.md`, focused on what differs from Phase 6 rather than re-explaining the shared mechanism.
+- **Unlike every prior phase, no changes were needed to any already-built service** — Phase 6's event enrichment already provided every field this phase needed. Pure new-module + gateway route + docker-compose addition.
+
+#### Files modified/created
+
+**api-gateway**
+- `application.yml` (new `audit-service` route, `/api/audit-logs/**` → `lb://audit-service`)
+
+**audit-service** (new module, filled in from the pom.xml/Dockerfile-only stub)
+- `pom.xml` (added `h2` test dep, `spring-boot-maven-plugin`)
+- `src/main/resources/{application.yml,.env.properties}`, `src/test/resources/application.yml`
+- `src/main/java/com/pipedevliv/audit/**` — `AuditServiceApplication`; `entity/` (`AuditLog`, `AuditEventType`); `repository/AuditLogRepository`; `config/RabbitMQConfig` (queue + 7 bindings + type-mapped converter); `service/` (`AuditListener`, `AuditService`, `AuditServiceImpl`); `controller/AuditLogController`; `dto/` (6 DTOs incl. the 4 cross-service mirror payloads)
+- `src/test/java/com/pipedevliv/audit/**` — full mirrored test suite (service/repository/controller/listener layers)
+
+**docker-compose.yml** (added `audit-service`)
+
+**explication_phase_7.md** (new)
+
+#### Decisions made
+
+- **Reused Phase 6's mirror-DTO + `setIdClassMapping` mechanism as-is** — no new architectural decision needed, just an independent copy of the pattern (each consumer owns its own view of upstream shapes).
+- **No recipient logic at all** — an audit trail records "this happened," not "who should know." One `AuditLog` row per event, unconditionally, including `user.synced` (which notification-service consumed only for its local directory, never surfaced).
+- **Fuller mirror DTOs than notification-service's** — traceability is the whole point here, so each mirror captures (nearly) the full upstream payload shape, serialized verbatim into a `details` column.
+- **Immutability via absent endpoints, not application logic** — no `updatedAt` field, no `PATCH`/`DELETE` routes exist at all.
+- **`ADMIN`-only read access** — an audit trail is an administrative concern, unlike notifications' personal/ownership-scoped model; matches the existing `TicketController.getStats()` precedent for "sensitive aggregate view" endpoints.
+
+#### Remaining tasks
+
+- Five stacked, unmerged branches now: `feature/phase3-user-service` → `feature/phase4-ticket-service` → `feature/phase5-pipeline-service` → `feature/phase6-notification-service` → `feature/phase7-audit-service`. Merge-order decision still not made.
+- No live multi-service smoke test of `audit-service` through the running Gateway was done this session (same gap as Phases 5-6) — worth doing interactively next session: perform a few ticket/pipeline actions, confirm `GET /api/audit-logs` as an ADMIN shows the right rows.
+
+#### Next steps for tomorrow
+
+1. Decide merge order for the five stacked branches (or start merging Phase 3 → develop now that it's stable).
+2. Do a live multi-service smoke test of the new Audit Service endpoints (manual, through the running Gateway, as an ADMIN user).
+3. Move on to the Frontend or CI/CD (Phase 9, `deploy.yml`) — the backend microservices are now feature-complete for the originally sketched scope (user/ticket/pipeline/notification/audit).
+
+---
+
 ## 2026-07-25 — Phase 6 (Notification Service)
 
 ### What we accomplished
