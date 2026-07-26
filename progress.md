@@ -1,4 +1,45 @@
-# Progress Log — 2026-07-22 / 2026-07-25
+# Progress Log — 2026-07-22 / 2026-07-26
+
+## 2026-07-26 — Phase 9 (CI/CD — GitHub Actions)
+
+### What we accomplished
+
+- User asked to move on to Phase 9, requesting a plan first and an explicit "go" signal before implementation. Explored the codebase (not the master plan doc from memory) and found that Phase 5's `pipeline-service` already contains a fully-built GitHub Actions integration that was never exercised: `GitHubActionsClient.triggerWorkflow` calls a `deploy.yml` workflow-dispatch that doesn't exist yet (documented 404 in the class Javadoc), and `WebhookController`/`PipelineServiceImpl.handleWorkflowRunEvent` already receive and process GitHub's **native** `workflow_run` webhook — a more elegant mechanism than the master plan doc's sketch (which manually `curl`s a `/api/webhooks/deployment` endpoint that doesn't exist and isn't needed).
+- Identified two real architectural blockers before planning: SonarQube (`localhost:9000`) is unreachable from a GitHub-hosted runner, and GitHub always delivers the `workflow_run` webhook from its own cloud — it can never reach `localhost` regardless of runner choice. Asked the user to choose between "fully live" (self-hosted runner + `gh webhook forward`) vs. "hosted runners, simulated deploy status" — user chose **fully live**.
+- Wrote and got approval for a full plan (`deep-leaping-hopper.md`), then user said "start" and to not forget the detailed explication file.
+- Implemented: added `jacoco-maven-plugin` to `backend/pom.xml` (verified live — `audit-service` test run produced a real `jacoco.xml`, `common-lib`'s no-tests case handled cleanly), wrote `.github/workflows/ci.yml` (path-filtered per-module build/test jobs, Maven-native `sonar:sonar` instead of the master doc's generic Sonar action, non-blocking Trivy/OWASP scans), and `.github/workflows/deploy.yml` (matches `PipelineServiceImpl`'s exact `workflow_dispatch` inputs, no manual webhook-notify step since the native webhook already handles it). Both validated for YAML syntax via `js-yaml`.
+- Wrote `explication_phase_9.md` in full, including copy-pasteable manual setup steps (self-hosted runner registration, `SONAR_TOKEN` secret, `gh webhook forward` for live demo sessions) since those three things require interactive GitHub credentials I don't have and shouldn't request via chat.
+
+#### Files modified/created
+
+- `backend/pom.xml` — added `jacoco-maven-plugin` (`org.jacoco:jacoco-maven-plugin:0.8.12`) to `<build><plugins>` (inherited by all 8 modules)
+- `.github/workflows/ci.yml` (new)
+- `.github/workflows/deploy.yml` (new)
+- `explication_phase_9.md` (new)
+- `explication_phase_8.md` — (small follow-up, committed to `feature/phase8-frontend` before branching) added a full local-startup/login-steps section, requested in the prior session
+
+#### Decisions made
+
+- **Self-hosted GitHub Actions runner** on the dev machine, chosen over GitHub-hosted runners, specifically to make SonarQube analysis and the deploy health-check step actually reachable — consistent with this project's "no fake implementations" pattern.
+- **`gh webhook forward` instead of a permanent repo webhook** in Settings → Webhooks — it registers/deregisters an ephemeral webhook automatically for the session, simpler than a permanent config that would need a permanently-reachable URL anyway.
+- **Maven's own `sonar:sonar` goal, not the generic `SonarSource/sonarqube-scan-action`** — the generic action targets non-Java projects; the Maven plugin analyzes the whole multi-module reactor (6 modules) as one project with real JaCoCo coverage.
+- **Trivy/OWASP dependency-check are non-blocking this phase** — neither has run against this codebase before; blocking immediately would redline the first PR on an unreviewed backlog.
+- **No `docker-compose.dev/test/prod.yml` split** — deviates from the master plan doc. This project has no real separate DEV/TEST/PROD infrastructure; three near-duplicate compose files would be simulation, not a real capability. `environment` stays a label in `deploy.yml`.
+- **Runner registration, `SONAR_TOKEN`, and `gh webhook forward` are manual, user-performed steps** — each needs interactive GitHub credentials/tokens that shouldn't be typed into chat; `explication_phase_9.md` §6 gives exact commands.
+
+#### Remaining tasks
+
+- None of the three manual setup steps have been performed yet — the live end-to-end flow (create ticket → approve → deploy → status updates live via the real webhook) is unverified.
+- `ci.yml` has never actually run (YAML syntax validated, but not exercised on the runner).
+- Branch `feature/phase9-cicd` created off `feature/phase8-frontend`, not yet committed/pushed at time of writing (pending user confirmation, per established end-of-phase pattern).
+
+#### Next steps for tomorrow
+
+1. Register the self-hosted runner, add `SONAR_TOKEN`, and do a live `gh webhook forward` demo run through the full ticket→deploy flow.
+2. Decide merge order for the now six stacked, unmerged branches (`phase3` → `phase4` → `phase5` → `phase6` → `phase7` → `phase8` → `phase9`).
+3. Consider tightening Trivy/OWASP to build-blocking once the first reports have been triaged.
+
+---
 
 ## 2026-07-25 — Phase 8 (Frontend — application React aux couleurs BIAT)
 

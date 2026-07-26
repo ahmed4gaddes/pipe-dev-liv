@@ -50,3 +50,78 @@ Le premier build de production pesait 855 Ko (avertissement Vite) — `recharts`
 - **Pas de thème Keycloak** — la page de connexion réelle garde l'apparence par défaut de Keycloak.
 - **Pas de tests automatisés frontend** — `package.json` n'avait aucun outillage de test avant cette phase (ni Vitest ni RTL) ; resterait une extension future raisonnable, pas un manque silencieux.
 - **`frontend` n'est pas dans `docker-compose.yml`** — `discovery-server`/`api-gateway` tournent déjà hors Docker dans ce projet, et Vite fige les variables `VITE_*` au moment du *build*, ce qui ne s'articule pas proprement avec le modèle "variables d'environnement au runtime" de `docker-compose` sans plomberie supplémentaire (build args). Workflow de dev : `npm run dev`.
+
+---
+
+## 8. Comment démarrer et ouvrir l'application en local
+
+Toutes les commandes ci-dessous s'exécutent depuis la racine du projet, `C:\Users\user\IdeaProjects\pipe-dev-liv`.
+
+### 8.1 Infrastructure (Postgres, Keycloak, RabbitMQ)
+
+```
+docker compose up -d postgres-users postgres-tickets postgres-pipelines postgres-notifications postgres-audit postgres-keycloak keycloak rabbitmq
+```
+
+### 8.2 `discovery-server` et `api-gateway` (tournent hors Docker dans ce projet)
+
+Dans deux terminaux séparés, attendre que `discovery-server` soit up avant de lancer `api-gateway` :
+
+```
+cd backend
+./mvnw.cmd -pl discovery-server spring-boot:run
+```
+
+```
+cd backend
+./mvnw.cmd -pl api-gateway spring-boot:run
+```
+
+(ou via les run configs IntelliJ équivalentes.)
+
+### 8.3 `user-service`
+
+Tourne en local lui aussi (hors Docker), comme `discovery-server`/`api-gateway` :
+
+```
+cd backend
+./mvnw.cmd -pl user-service spring-boot:run
+```
+
+### 8.4 Les 4 autres microservices (Docker)
+
+```
+docker compose up -d ticket-service pipeline-service notification-service audit-service
+```
+
+### 8.5 Frontend
+
+```
+cd frontend
+npm run dev
+```
+
+→ disponible sur `http://localhost:5173`.
+
+### 8.6 Vérification que tout répond
+
+```
+curl http://localhost:8761                    # discovery-server
+curl http://localhost:8080/actuator/health     # api-gateway
+curl http://localhost:8081/actuator/health     # user-service
+curl http://localhost:8082/actuator/health     # ticket-service
+curl http://localhost:8083/actuator/health     # pipeline-service
+curl http://localhost:8084/actuator/health     # notification-service
+curl http://localhost:8085/actuator/health     # audit-service
+curl http://localhost:5173                     # frontend
+```
+
+### 8.7 Se connecter dans le navigateur
+
+1. Ouvrir `http://localhost:5173`.
+2. Sur la page d'accueil (Splash), cliquer sur le bouton doré **"Se connecter"**.
+3. Redirection automatique vers la vraie page de login Keycloak (`localhost:9090/...`).
+4. Se connecter avec l'utilisateur de test `ahmed` (créé en Phase 2) et son mot de passe.
+   - Mot de passe oublié / jamais connu : aller sur `http://localhost:9090/admin`, se connecter avec les identifiants admin (`KC_ADMIN_USER`/`KC_ADMIN_PASSWORD` du fichier `.env` racine), puis `Users` → `ahmed` → onglet `Credentials` → `Reset password` (décocher "Temporary"). Vérifier aussi l'onglet `Role mapping` pour confirmer qu'un rôle (`ROLE_DEVELOPER`, `ROLE_ADMIN`, etc.) est bien attribué.
+5. Après authentification, Keycloak renvoie sur `localhost:5173` avec le token — arrivée sur le **Dashboard**.
+6. Navigation via la sidebar : Tickets, Pipelines, Notifications, Team (TECH_LEAD+), Audit Logs (ADMIN uniquement), Profile.

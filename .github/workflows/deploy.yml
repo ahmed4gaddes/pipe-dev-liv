@@ -1,0 +1,59 @@
+name: Deploy Pipeline
+
+# Déclenché par pipeline-service (GitHubActionsClient.triggerWorkflow, Phase 5) via
+# POST /repos/{owner}/{repo}/actions/workflows/deploy.yml/dispatches. Le nom de ce fichier
+# est en dur côté backend (application.yml -> github.workflow-file: deploy.yml) : ne pas renommer.
+#
+# Pas d'étape "notify backend" ici : le webhook natif GitHub workflow_run (une fois le webhook
+# du dépôt configuré, voir explication_phase_9.md §5) prévient déjà pipeline-service quand ce run
+# se termine — WebhookController + PipelineServiceImpl.handleWorkflowRunEvent gèrent tout,
+# y compris la récupération des jobs/étapes via l'API REST. Un échec de job ici se traduit
+# naturellement en conclusion "failure" -> PipelineStatus.FAILED côté ticket.
+#
+# runs-on: self-hosted -> ce job tourne sur la même machine que le reste de la stack locale,
+# donc "Health check" peut réellement joindre http://localhost:8080.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environnement cible'
+        type: choice
+        required: true
+        options: [dev, test, prod]
+        default: dev
+      ticket_id:
+        description: 'ID du ticket qui déclenche ce déploiement'
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images
+        run: docker compose build user-service ticket-service pipeline-service notification-service audit-service
+
+      - name: Deploy (stack locale)
+        run: docker compose up -d user-service ticket-service pipeline-service notification-service audit-service
+
+      - name: Health check
+        shell: bash
+        run: |
+          for i in 1 2 3 4 5 6; do
+            if curl -sf http://localhost:8080/actuator/health; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::api-gateway n'a pas répondu healthy après 30s"
+          exit 1
+
+      - name: Résumé du déploiement
+        if: always()
+        shell: bash
+        run: |
+          echo "### Déploiement — environnement \`${{ inputs.environment }}\`, ticket #${{ inputs.ticket_id }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Run déclenché par pipeline-service, run id \`${{ github.run_id }}\`." >> "$GITHUB_STEP_SUMMARY"
