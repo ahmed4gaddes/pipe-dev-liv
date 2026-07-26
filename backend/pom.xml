@@ -61,6 +61,31 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+        <plugins>
+            <!-- Déclaré ici (pas pluginManagement) pour être hérité par les 8 modules sans
+                 qu'aucun n'ait à le redéclarer. Produit target/site/jacoco/jacoco.xml, consommé par
+                 l'analyse SonarQube (Phase 9, ci.yml) pour la couverture de test. -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
 
     <dependencies>

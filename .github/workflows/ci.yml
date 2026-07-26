@@ -1,0 +1,249 @@
+name: CI Pipeline
+
+# Runner: self-hosted (registered locally per explication_phase_9.md §1) so jobs can reach
+# localhost:9000 (SonarQube) and the rest of the local stack directly.
+#
+# Security note: self-hosted runners execute workflow code with the runner machine's own
+# privileges. That's an accepted risk here only because this is a private, single-contributor
+# repo — pull_request runs never come from an untrusted fork. Do NOT reuse this runner
+# configuration on a public repo that accepts external PRs without adding the usual
+# safeguards (environment protection rules, required reviewers, `pull_request_target` care).
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  detect-changes:
+    runs-on: self-hosted
+    outputs:
+      common: ${{ steps.changes.outputs.common }}
+      discovery: ${{ steps.changes.outputs.discovery }}
+      gateway: ${{ steps.changes.outputs.gateway }}
+      user: ${{ steps.changes.outputs.user }}
+      ticket: ${{ steps.changes.outputs.ticket }}
+      pipeline: ${{ steps.changes.outputs.pipeline }}
+      notification: ${{ steps.changes.outputs.notification }}
+      audit: ${{ steps.changes.outputs.audit }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            common: 'backend/common-lib/**'
+            discovery: 'backend/discovery-server/**'
+            gateway: 'backend/api-gateway/**'
+            user: 'backend/user-service/**'
+            ticket: 'backend/ticket-service/**'
+            pipeline: 'backend/pipeline-service/**'
+            notification: 'backend/notification-service/**'
+            audit: 'backend/audit-service/**'
+            frontend: 'frontend/**'
+
+  build-common:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.common == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { java-version: '17', distribution: 'temurin' }
+      - run: cd backend && ./mvnw -pl common-lib clean install -DskipTests
+
+  build-discovery-server:
+    needs: [detect-changes, build-common]
+    if: |
+      always() &&
+      (needs.detect-changes.outputs.discovery == 'true' || needs.detect-changes.outputs.common == 'true')
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { java-version: '17', distribution: 'temurin' }
+      - run: cd backend && ./mvnw clean verify -pl common-lib,discovery-server
+
+  build-api-gateway:
+    needs: [detect-changes, build-common]
+    if: |
+      always() &&
+      (needs.detect-changes.outputs.gateway == 'true' || needs.detect-changes.outputs.common == 'true')
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { java-version: '17', distribution: 'temurin' }
+      - run: cd backend && ./mvnw clean verify -pl common-lib,api-gateway
+
+  build-user-service:
+    needs: [detect-changes, build-common]
+    if: |
+      always() &&
+      (needs.detect-changes.outputs.user == 'true' || needs.detect-changes.outputs.common == 'true')
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { java-version: '17', distribution: 'temurin' }
+      - run: cd backend && ./mvnw clean verify -pl common-lib,user-service
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: user-service-jacoco
+          path: backend/user-service/target/site/jacoco/jacoco.xml
+          if-no-files-found: ignore
+
+  build-ticket-service:
+    needs: [detect-changes, build-common]
+    if: |
+      always() &&
+      (needs.detect-changes.outputs.ticket == 'true' || needs.detect-changes.outputs.common == 'true')
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { java-version: '17', distribution: 'temurin' }
+      - run: cd backend && ./mvnw clean verify -pl common-lib,ticket-service
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ticket-service-jacoco
+          path: backend/ticket-service/target/site/jacoco/jacoco.xml
+          if-no-files-found: ignore
+
+  build-pipeline-service:
+    needs: [detect-changes, build-common]
+    if: |
+      always() &&
+      (needs.detect-changes.outputs.pipeline == 'true' || needs.detect-changes.outputs.common == 'true')
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { java-version: '17', distribution: 'temurin' }
+      - run: cd backend && ./mvnw clean verify -pl common-lib,pipeline-service
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pipeline-service-jacoco
+          path: backend/pipeline-service/target/site/jacoco/jacoco.xml
+          if-no-files-found: ignore
+
+  build-notification-service:
+    needs: [detect-changes, build-common]
+    if: |
+      always() &&
+      (needs.detect-changes.outputs.notification == 'true' || needs.detect-changes.outputs.common == 'true')
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { java-version: '17', distribution: 'temurin' }
+      - run: cd backend && ./mvnw clean verify -pl common-lib,notification-service
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: notification-service-jacoco
+          path: backend/notification-service/target/site/jacoco/jacoco.xml
+          if-no-files-found: ignore
+
+  build-audit-service:
+    needs: [detect-changes, build-common]
+    if: |
+      always() &&
+      (needs.detect-changes.outputs.audit == 'true' || needs.detect-changes.outputs.common == 'true')
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { java-version: '17', distribution: 'temurin' }
+      - run: cd backend && ./mvnw clean verify -pl common-lib,audit-service
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: audit-service-jacoco
+          path: backend/audit-service/target/site/jacoco/jacoco.xml
+          if-no-files-found: ignore
+
+  build-frontend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: cd frontend && npm ci && npm run lint && npm run build
+
+  # Analyse SonarQube — le scanner Maven (pas l'action générique SonarSource/sonarqube-scan-action,
+  # pensée pour des projets non-Java) pour que les 6 modules applicatifs soient analysés comme un
+  # seul projet multi-module, coverage JaCoCo incluse (voir backend/pom.xml). Accessible uniquement
+  # parce que le runner est self-hosted (SonarQube tourne en localhost:9000).
+  sonar-analysis:
+    needs:
+      [
+        detect-changes,
+        build-user-service,
+        build-ticket-service,
+        build-pipeline-service,
+        build-notification-service,
+        build-audit-service,
+      ]
+    if: always() && needs.detect-changes.result == 'success'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { java-version: '17', distribution: 'temurin' }
+      - name: Analyse SonarQube (reactor complet)
+        run: |
+          cd backend && ./mvnw clean verify sonar:sonar \
+            -Dsonar.host.url=http://localhost:9000 \
+            -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.projectKey=pipe-dev-liv
+        continue-on-error: true
+
+  # Sécurité — OWASP Dependency-Check. Non bloquant cette phase : jamais exécuté sur ce code
+  # avant, un backlog de CVE non trié bloquerait immédiatement toute PR (voir explication_phase_9.md).
+  dependency-check:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { java-version: '17', distribution: 'temurin' }
+      - run: cd backend && ./mvnw org.owasp:dependency-check-maven:aggregate
+        continue-on-error: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-check-report
+          path: backend/target/dependency-check-report.html
+          if-no-files-found: ignore
+
+  # Sécurité — Trivy (scan filesystem de chaque service : dépendances Maven/npm). Non bloquant,
+  # même raison que dependency-check ci-dessus.
+  trivy-scan:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        service:
+          [
+            backend/user-service,
+            backend/ticket-service,
+            backend/pipeline-service,
+            backend/notification-service,
+            backend/audit-service,
+            backend/api-gateway,
+            frontend,
+          ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: ${{ matrix.service }}
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
