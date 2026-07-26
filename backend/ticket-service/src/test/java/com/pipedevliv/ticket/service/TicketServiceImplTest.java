@@ -11,6 +11,7 @@ import com.pipedevliv.ticket.dto.TicketResponseDTO;
 import com.pipedevliv.ticket.dto.TicketStatusChangeDTO;
 import com.pipedevliv.ticket.dto.TicketUpdateDTO;
 import com.pipedevliv.ticket.entity.Ticket;
+import com.pipedevliv.ticket.entity.TicketComment;
 import com.pipedevliv.ticket.entity.TicketPriority;
 import com.pipedevliv.ticket.entity.TicketStatus;
 import com.pipedevliv.ticket.exception.InvalidTransitionException;
@@ -249,6 +250,25 @@ class TicketServiceImplTest {
 
         assertThat(result.getContent()).isEqualTo("LGTM");
         assertThat(result.getAuthorUserId()).isEqualTo("dev-1");
+    }
+
+    @Test
+    void getComments_returnsCommentsForTicket() {
+        when(ticketRepository.findById(1L)).thenReturn(Optional.of(existingTicket(TicketStatus.DRAFT)));
+        when(ticketCommentRepository.findByTicketIdOrderByCreatedAtAsc(1L)).thenReturn(List.of(
+                TicketComment.builder().id(1L).ticketId(1L).authorUserId("dev-1").content("LGTM").build()));
+
+        var result = ticketService.getComments(1L);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getContent()).isEqualTo("LGTM");
+    }
+
+    @Test
+    void getComments_ticketNotFound_throws() {
+        when(ticketRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> ticketService.getComments(99L)).isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test

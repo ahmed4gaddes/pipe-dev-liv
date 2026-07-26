@@ -1,0 +1,31 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.badge-gray {
+  background: var(--color-gray-100);
+  color: var(--color-gray-600);
+}
+.badge-sky {
+  background: var(--color-sky-100);
+  color: var(--color-sky-600);
+}
+.badge-navy {
+  background: var(--color-navy-100);
+  color: var(--color-navy);
+}
+.badge-gold {
+  background: var(--color-gold-100);
+  color: var(--color-gold-600);
+}
+.badge-danger {
+  background: var(--color-danger-100);
+  color: var(--color-danger);
+}

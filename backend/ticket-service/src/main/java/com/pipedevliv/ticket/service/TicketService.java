@@ -41,5 +41,7 @@ public interface TicketService {
 
     TicketCommentDTO addComment(Long id, TicketCommentCreateDTO dto, String authorUserId);
 
+    List<TicketCommentDTO> getComments(Long id);
+
     TicketStatsDTO getStats();
 }

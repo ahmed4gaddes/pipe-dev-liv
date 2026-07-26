@@ -278,6 +278,14 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
+    public List<TicketCommentDTO> getComments(Long id) {
+        findTicketOrThrow(id);
+        return ticketCommentRepository.findByTicketIdOrderByCreatedAtAsc(id).stream()
+                .map(this::toDTO)
+                .toList();
+    }
+
+    @Override
     public TicketStatsDTO getStats() {
         List<Ticket> all = ticketRepository.findAll();
         Map<String, Long> byStatus = all.stream()

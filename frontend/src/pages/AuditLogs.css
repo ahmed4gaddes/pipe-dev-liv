@@ -1,0 +1,17 @@
+.audit-filters {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.audit-json {
+  background: var(--color-gray-900);
+  color: #d7e3ee;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-family: ui-monospace, Consolas, monospace;
+  overflow-x: auto;
+  max-height: 320px;
+}

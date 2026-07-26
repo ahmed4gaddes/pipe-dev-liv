@@ -117,6 +117,12 @@ public class TicketController {
         return ApiResponse.success(ticketService.addComment(id, dto, currentUserId()), "Commentaire ajouté");
     }
 
+    @GetMapping("/{id}/comments")
+    @PreAuthorize("hasRole('VIEWER')")
+    public ApiResponse<List<TicketCommentDTO>> getComments(@PathVariable Long id) {
+        return ApiResponse.success(ticketService.getComments(id), "Commentaires récupérés");
+    }
+
     @GetMapping("/stats")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<TicketStatsDTO> getStats() {

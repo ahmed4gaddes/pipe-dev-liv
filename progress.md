@@ -1,5 +1,63 @@
 # Progress Log — 2026-07-22 / 2026-07-25
 
+## 2026-07-25 — Phase 8 (Frontend — application React aux couleurs BIAT)
+
+### What we accomplished
+
+- User asked to move on to the frontend, "mindblowing and unique," with real BIAT Tunisia colors and logo. Clarified two things before starting: how to source the logo (user provided the actual file — `frontend/src/assets/biat-logo.svg`, which turned out to be a mislabeled PNG reading "BIAT — Innovation & Technology") and the exact brand colors (extracted directly from the logo's pixels via a PowerShell `System.Drawing` sample rather than guessed: navy `#005186`, sky blue `#48B3E1`; user then asked for gold added, no hex given, so a refined metallic gold `#D4AF37` was chosen and used sparingly).
+- Planned Phase 8 via plan mode (explored the existing Vite scaffold, the full backend REST API surface across all 5 services, and — critically — read `TicketStateMachine`/`TicketServiceImpl` in full to get the *exact* transition rules and business restrictions right for the ticket action bar, not an approximation).
+- Built the full application: Keycloak auth (`keycloak-js`, Authorization Code + PKCE, silent SSO check, proactive token refresh), a design system (`styles/tokens.css`, CSS custom properties for the exact extracted BIAT palette + neutrals/semantic colors), an API layer (`axios` + `@tanstack/react-query`, one file per backend resource), a full shared UI kit (`Button`, `Card`, `StatusPill`, `Table`, `Pagination`, `Modal`, `Skeleton`, `EmptyState`, `Toast`, `Field`, `Avatar`, `Icon` — all hand-built, no UI library, to keep the look genuinely custom), a branded `AppShell` (navy-gradient sidebar, role-filtered nav, notification bell, user menu) with `framer-motion` route transitions, and 10 pages (Splash, Dashboard, Tickets list/create/detail, Pipelines list/detail, Notifications, Team, Audit Logs, Profile).
+- Discovered and fixed a small backend gap while wiring the API layer: `ticket-service` could create comments but never exposed a way to list them back. Asked the user; they chose to add the missing `GET /api/tickets/{id}/comments` endpoint (+ tests) rather than drop the feature — the only backend change this phase.
+- Loaded the `dataviz` skill before building the one dashboard chart (ticket status breakdown): chose a horizontal bar chart over a donut (magnitude comparison, not series identity, per the skill's form-choice rules), colored each bar by its status-family tone, and **ran the palette validator's `contrast()` check rather than eyeballing it** — sky/gold fell under the 3:1 mark contrast floor, so every bar got a mandatory direct value label as the required relief channel instead of silently swapping to safer-but-off-brand colors.
+- Fixed a real bundle-size warning (855 KB main bundle, mostly `recharts` pulled in even for unauthenticated visitors who only see the Splash page) by route-level code-splitting every page component via `React.lazy`/`Suspense` — brought the initial bundle down to 254 KB.
+- Verified: `npm run lint` clean, `npm run build` clean (no warnings after code-splitting), dev server boots and responds 200. **Could not do a visual/interactive check** — no browser tool was available this session (user declined the Claude in Chrome extension when offered) and the full backend stack (Keycloak + 5 services) wasn't running. Left `npm run dev` running on port 5173 for the user to inspect directly instead of claiming a verification that didn't happen.
+- Wrote `explication_phase_8.md`, matching the existing documentation style (not originally itemized in the approved plan's section list, added anyway for consistency with every prior phase).
+
+#### Files modified/created
+
+**ticket-service** (small, user-approved addition)
+- `service/TicketService.java` / `TicketServiceImpl.java` (new `getComments`)
+- `controller/TicketController.java` (new `GET /{id}/comments`)
+- Test additions in `TicketServiceImplTest` and `TicketControllerTest`
+
+**frontend** (full rebuild from the Vite/React scaffold)
+- `package.json` (added `react-router-dom`, `keycloak-js`, `axios`, `@tanstack/react-query`, `framer-motion`, `recharts`, `@fontsource/inter`)
+- `src/styles/` (`tokens.css` — BIAT palette design tokens; `status.js` — status→tone→hex mapping shared by pills and the dashboard chart)
+- `src/auth/` (`keycloak.js`, `AuthContext.jsx`, `ProtectedRoute.jsx`), `public/silent-check-sso.html`
+- `src/api/` (`client.js` + one file per resource: `tickets.js`, `comments.js`, `pipelines.js`, `notifications.js`, `auditLogs.js`, `users.js`)
+- `src/components/ui/` (12 shared components), `src/components/layout/AppShell.jsx`, `src/components/dashboard/` (`StatCard`, `StatusBreakdownChart`), `src/components/tickets/` (`TicketForm`, `TicketActionBar`, `TicketTimeline`, `TicketComments`), `src/components/pipelines/PipelineStageList`
+- `src/pages/` (10 pages + `Forbidden`/`NotFound`), `src/constants/ticket.js` (status list + the action-bar transition table)
+- `src/App.jsx` / `main.jsx` (routing + provider wiring, lazy-loaded pages)
+- `.env.example`, `.env` (gitignored), `.gitignore` (added `.env`)
+- Removed: `App.css`, `react.svg`, `vite.svg`, `hero.png`, `icons.svg` (unused Vite scaffold leftovers); replaced `favicon.svg` with a brand-colored mark
+
+**explication_phase_8.md** (new)
+
+#### Decisions made
+
+- **Real branding, not aesthetic inspiration** — the logo is the user's actual internal BIAT Innovation & Technology asset; colors extracted from it programmatically, not guessed.
+- **No hand-built Keycloak login form** — the real credential form stays Keycloak's own hosted page; reskinning it is a Keycloak-theme (FTL) task, a different stack, explicitly out of scope this phase.
+- **Client-side role checks are UX only** — every actual security boundary remains each endpoint's own `@PreAuthorize`; the frontend mirrors `RoleHierarchy`/`TicketStateMachine` purely to decide what to show.
+- **No UI component library** — every shared component (`Button`, `Card`, `Table`, etc.) is hand-built against the design tokens, to keep the look genuinely custom rather than a themed off-the-shelf kit.
+- **Dashboard chart colored by status meaning, not generic categorical hues** — and the resulting sub-3:1 contrast on sky/gold was handled via mandatory direct labels (the `dataviz` skill's prescribed relief channel), not by quietly darkening the brand colors.
+- **No `frontend` entry in `docker-compose.yml` this phase** — `discovery-server`/`api-gateway` already run outside Docker in this project, and Vite bakes `VITE_*` vars at build time, which doesn't compose cleanly with `docker-compose`'s runtime-env model without extra build-arg plumbing. Dev workflow is `npm run dev`.
+- **No automated frontend tests** — `package.json` had zero test tooling before this phase; verified via lint + build + (attempted, blocked) manual click-through instead.
+
+#### Remaining tasks
+
+- **No live visual/interactive verification was possible this session** — no browser tool available, backend stack not running. This is the most important follow-up: start the full stack (Keycloak, Postgres, RabbitMQ, discovery/gateway locally, the 5 Dockerized microservices) and actually click through Splash → login → Dashboard → create/approve/deploy a ticket → notifications → audit logs, together, next session.
+- Six stacked, unmerged branches now: `feature/phase3-user-service` → `feature/phase4-ticket-service` → `feature/phase5-pipeline-service` → `feature/phase6-notification-service` → `feature/phase7-audit-service` → `feature/phase8-frontend`. Merge-order decision still not made.
+- Frontend automated tests (Vitest + React Testing Library) remain unaddressed.
+- CI/CD (Phase 9, `deploy.yml`) still unbuilt.
+
+#### Next steps for tomorrow
+
+1. Live click-through of the frontend against the real running stack — the actual verification this phase couldn't complete alone.
+2. Decide merge order for the six stacked branches.
+3. Phase 9 (CI/CD) or frontend test coverage.
+
+---
+
 ## 2026-07-25 — Phase 7 (Audit Service)
 
 ### What we accomplished
