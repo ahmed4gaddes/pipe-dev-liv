@@ -58,12 +58,32 @@ Docker Desktop tourne (`docker info` fonctionne, `docker ps` liste les conteneur
 Testcontainers (bibliothèque Java `docker-java`) échoue à s'y connecter depuis ce shell : essayé
 `DOCKER_HOST=npipe:////./pipe/docker_engine`, `npipe:////./pipe/dockerDesktopLinuxEngine`, et
 `npipe:////./pipe/docker_cli` — chacun échoue soit par timeout soit avec une réponse `/info`
-quasi-vide (seul le champ `Labels` renseigné). Signature typique d'un Docker Desktop récent qui
-restreint l'accès direct au pipe nommé aux processus qu'il reconnaît (CLI Docker officiel), pas à
-un process Java arbitraire — pas un défaut du code de test. Solution standard : activer
-`Settings → General → "Expose daemon on tcp://localhost:2375 without TLS"` dans Docker Desktop
-(action GUI, ne peut pas être faite depuis ce terminal). L'utilisateur a choisi de l'activer ;
-**[état à la fin de cette session : voir §7 « Ce qui reste ouvert »]**.
+quasi-vide (seul le champ `Labels` renseigné).
+
+L'utilisateur a activé `Settings → General → "Expose daemon on tcp://localhost:2375 without TLS"`
+dans Docker Desktop (Apply & Restart — nécessite de relancer Docker Desktop entièrement, donc tous
+les conteneurs du projet, remontés ensuite via `docker compose up -d`). Le port TCP est bien
+exposé (`curl http://localhost:2375/version` répond correctement, avec la vraie version du moteur).
+Pourtant, `./mvnw verify` avec `DOCKER_HOST=tcp://localhost:2375` échoue **exactement de la même
+façon** — même réponse `/info` quasi-vide, même unique champ `Labels` renseigné
+(`com.docker.desktop.address=npipe://\\.\pipe\docker_cli`).
+
+Ceci élimine l'hypothèse initiale (« il suffit d'exposer le port ») : le blocage n'est pas une
+question de transport (named pipe vs TCP) mais d'une couche de sécurité de Docker Desktop
+(vraisemblablement « Enhanced Container Isolation » ou équivalent dans les versions récentes —
+Docker Desktop 4.82 ici) qui intercepte l'accès à l'API Docker, quel que soit le transport, pour
+tout processus qu'elle ne reconnaît pas comme le CLI Docker officiel, et lui renvoie cette même
+réponse factice plutôt qu'un rejet franc. Corriger ça correctement demanderait de désactiver ce
+paramètre de sécurité dans Docker Desktop (encore une action GUI, et cette fois avec de vraies
+implications de sécurité — autoriser n'importe quel processus local à piloter Docker — donc pas
+quelque chose à activer à la légère). Décision prise avec l'utilisateur : **s'arrêter là**, garder
+les 5 classes `*IntegrationIT` comme du code correct et compilé mais non vérifié localement dans
+cette session, plutôt que de continuer à redémarrer Docker Desktop sur des hypothèses successives.
+
+**Implication pour la Phase 9** : le runner self-hosted GitHub Actions tournera sur cette même
+machine, avec cette même installation Docker Desktop — il rencontrera probablement le même mur si
+`ci.yml`/`deploy.yml` tentent un jour d'utiliser Testcontainers ou de piloter Docker par API depuis
+un processus lancé par le runner. À garder en tête, pas encore vérifié.
 
 ---
 
@@ -136,12 +156,14 @@ forward`, absence de fichiers compose par environnement.
 
 ## 4. Ce qui reste ouvert
 
-- **Vérification live des 5 IT Testcontainers bloquée par l'environnement Docker Desktop de cette
-  machine** (voir §1) — le code est écrit, compile, suit exactement les patterns Testcontainers
-  standards (`@Testcontainers`, `@DynamicPropertySource`), mais n'a pas pu tourner jusqu'au bout
-  dans cette session avant que ce document ne soit rédigé. Prochaine étape : une fois le port TCP
-  du démon Docker Desktop exposé, relancer `./mvnw clean verify` sur les 5 services avec
-  `DOCKER_HOST=tcp://localhost:2375`.
+- **Vérification live des 5 IT Testcontainers bloquée par une couche de sécurité de Docker
+  Desktop** (voir §1) — pas un problème d'exposition de port (testé et éliminé), probablement
+  « Enhanced Container Isolation » ou équivalent. Le code est écrit, compile, suit exactement les
+  patterns Testcontainers standards (`@Testcontainers`, `@DynamicPropertySource`), mais n'a jamais
+  pu tourner jusqu'au bout dans cet environnement. Prochaine étape, si repris : chercher et
+  désactiver ce paramètre de sécurité dans Docker Desktop (implications de sécurité réelles, à
+  peser), ou tenter de lancer Maven directement depuis WSL2 (qui a un accès direct au socket Docker
+  sans passer par la couche de proxy Windows).
 - **`react-router-dom` a un avis de sécurité connu** dans la plage installée (voir §2) — pas corrigé
   cette phase, à trancher séparément (upgrade vs downgrade, impact sur le reste du frontend).
 - **Pas de tests OpenAPI/Swagger ni de rapport de stage** — explicitement hors périmètre, pas un
