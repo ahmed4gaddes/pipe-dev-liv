@@ -64,7 +64,10 @@
         <plugins>
             <!-- Déclaré ici (pas pluginManagement) pour être hérité par les 8 modules sans
                  qu'aucun n'ait à le redéclarer. Produit target/site/jacoco/jacoco.xml, consommé par
-                 l'analyse SonarQube (Phase 9, ci.yml) pour la couverture de test. -->
+                 l'analyse SonarQube (Phase 9, ci.yml) pour la couverture de test. Les exécutions
+                 "*-integration" (Phase 10) font la même chose pour les tests Failsafe (*IT.java,
+                 target/site/jacoco-it/jacoco.xml) — agent séparé (failsafeArgLine) pour ne pas
+                 mélanger la couverture unitaire et la couverture d'intégration. -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
@@ -81,6 +84,42 @@
                         <phase>test</phase>
                         <goals>
                             <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>prepare-agent-integration</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>prepare-agent-integration</goal>
+                        </goals>
+                        <configuration>
+                            <propertyName>failsafeArgLine</propertyName>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>report-integration</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report-integration</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Tests d'intégration Testcontainers (*IT.java, Phase 10) — séparés des tests unitaires
+                 Surefire (*Test.java, H2/mocks) : plus lents (vraie Postgres/RabbitMQ, Docker requis),
+                 exécutés à la phase integration-test/verify plutôt que test. `mvn verify` (déjà utilisé
+                 partout, y compris ci.yml) les déclenche automatiquement — aucun changement CI requis. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <argLine>${failsafeArgLine}</argLine>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -110,6 +149,32 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Tests d'intégration (Phase 10) — version gérée par le BOM testcontainers-bom importé
+             par spring-boot-dependencies (hérité via spring-boot-starter-parent), pas besoin de la
+             fixer ici. -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>rabbitmq</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Attente asynchrone (Phase 10) — nécessaire pour les IT qui publient un message et
+             attendent qu'un @RabbitListener le consomme et persiste en base sur un autre thread. -->
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <version>4.2.2</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

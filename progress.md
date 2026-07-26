@@ -1,5 +1,97 @@
 # Progress Log — 2026-07-22 / 2026-07-26
 
+## 2026-07-26 — Phase 10 (Tests d'intégration, tests frontend, documentation)
+
+### What we accomplished
+
+- User asked to move to Phase 10. The master plan bundles five workstreams under that name
+  (integration tests, OpenAPI docs, frontend tests, README/ADRs, a personal internship report);
+  surveyed current state first (no Testcontainers anywhere, README a 1-line stub, zero frontend
+  test tooling, no ADRs) and asked the user to pick via multi-select — they chose **integration
+  tests, frontend tests, and README+ADRs** (OpenAPI and the stage report explicitly deferred/out
+  of scope).
+- Added `maven-failsafe-plugin` + a second JaCoCo execution pair to `backend/pom.xml` (inherited by
+  all 8 modules), plus Testcontainers (`junit-jupiter`, `postgresql`, `rabbitmq`) and `awaitility`
+  test dependencies — versions resolved cleanly via Spring Boot's managed BOM, verified directly.
+- Wrote 5 `*IntegrationIT` classes (`user`, `ticket`, `pipeline`, `notification`, `audit`), each
+  using real Testcontainers Postgres (+RabbitMQ for ticket/notification/audit). The
+  `TicketServiceIntegrationIT` exercises persistence + the real state machine + real RabbitMQ
+  publication together; `NotificationServiceIntegrationIT`/`AuditServiceIntegrationIT` publish via
+  each service's own configured `RabbitTemplate` (exploiting `setIdClassMapping`'s bidirectional
+  mapping from Phase 6/7) and assert a real `@RabbitListener` persisted a real row.
+- Hit a real Docker-connectivity blocker running the ITs: Testcontainers can't reach Docker Desktop
+  from this shell despite `docker info`/`docker ps` working directly (tried three different npipe
+  addresses, all failed or returned a stub `/info` response) — a known Windows/Docker-Desktop
+  access-control issue, not a test-code problem. Asked the user how to proceed; they chose to
+  enable Docker Desktop's TCP daemon endpoint (Settings → General) and have me retry once done —
+  **not completed by end of this session**, tracked as an open item.
+- Set up Vitest + React Testing Library for the frontend (zero test tooling existed before). Hit
+  and fixed a real "React is not defined" error in Vitest specifically (not in the normal Vite
+  dev/build pipeline) by forcing `esbuild.jsx: 'automatic'` in `vite.config.js`, rather than adding
+  scattered `import React` statements as a local workaround.
+- Wrote 18 frontend tests across 4 files (`constants/ticket`, `auth/AuthContext`, `api/client`,
+  `components/tickets/TicketActionBar`) — all passing; `npm run lint` and `npm run build` still
+  clean, same bundle sizes as Phase 8 (no regression). Caught and fixed one wrong assumption in the
+  test itself (not the product code): the three `DEPLOYING_*` in-flight statuses correctly have no
+  `TICKET_ACTIONS` entry (no user action while an automated deploy is running) — not a gap.
+- Ran `npm audit`: fixed the one safe, non-breaking finding (`brace-expansion`); left two others
+  that require breaking upgrades — flagged `react-router-dom`'s CVE (a pre-existing Phase 8
+  dependency, not one added this phase) as a follow-up decision rather than silently
+  upgrading/downgrading it mid-testing-phase.
+- Rewrote `README.md` (was a 3-line stub) with a corrected Mermaid architecture diagram (reflecting
+  the real native-webhook flow from Phase 9, not the master doc's original sketch), a tech-stack
+  table, and a condensed setup sequence that links to (rather than duplicates) the full steps
+  already in `explication_phase_8.md` §8.
+- Wrote 6 ADRs in `docs/adr/` (new), documenting decisions already made in earlier phases
+  (microservices over a monolith, the RabbitMQ mirror-DTO pattern, client-side role checks being
+  UX-only, the native GitHub webhook, the self-hosted runner + `gh webhook forward`, and no
+  per-environment compose split) rather than inventing new decisions for the occasion.
+- Wrote `explication_phase_10.md` in full, including the two real blockers hit this session
+  (Docker/Testcontainers connectivity, the Vitest JSX runtime issue) and how each was resolved or
+  left open.
+
+#### Files modified/created
+
+- `backend/pom.xml` — `maven-failsafe-plugin`, second JaCoCo execution pair, Testcontainers +
+  awaitility test dependencies
+- `backend/{user,ticket,pipeline,notification,audit}-service/src/test/java/.../XxxIntegrationIT.java` (5 new)
+- `frontend/package.json`, `frontend/vite.config.js`, `frontend/src/test/setup.js` (new)
+- `frontend/src/constants/ticket.test.js`, `frontend/src/auth/AuthContext.test.jsx`,
+  `frontend/src/api/client.test.js`, `frontend/src/components/tickets/TicketActionBar.test.jsx` (4 new)
+- `README.md` (rewritten)
+- `docs/adr/0001-....md` … `0006-....md` (new)
+- `explication_phase_10.md` (new)
+
+#### Decisions made
+
+- **Failsafe (not Surefire) for `*IT.java`** — standard Maven separation of fast unit tests from
+  slow, Docker-dependent integration tests; `mvn verify` (already used everywhere, including
+  `ci.yml`) triggers both automatically, no CI changes needed.
+- **`pipeline-service`'s IT never calls the real GitHub API** — persistence-only; calling a real
+  external API from an automated test is out of the question (network dependency, real token,
+  risk of triggering a real run).
+- **Scope of frontend tests limited to the 3 user-flagged highest-risk areas** — not an
+  open-ended "test everything" effort, consistent with "no half-finished implementations" (each
+  test that exists is real and meaningful, not padding).
+- **`react-router-dom`'s CVE flagged, not fixed** — a pre-existing dependency, not one touched this
+  phase; a version change is a separate decision.
+
+#### Remaining tasks
+
+- Retry the 5 IT tests once Docker Desktop's TCP daemon endpoint is confirmed enabled
+  (`DOCKER_HOST=tcp://localhost:2375`).
+- Decide on the `react-router-dom` security advisory (upgrade path or accept the risk for now).
+- Merge-order decision for the now seven stacked, unmerged branches (`phase3` → … → `phase10`)
+  still not made.
+
+#### Next steps for tomorrow
+
+1. Confirm Docker Desktop TCP daemon is enabled; rerun `./mvnw clean verify` across the 5 services.
+2. Decide whether to tackle OpenAPI/Swagger docs or the frontend `react-router-dom` advisory next.
+3. Consider the stage report outline (personal document, not a code deliverable) if the user wants help structuring it.
+
+---
+
 ## 2026-07-26 — Phase 9 (CI/CD — GitHub Actions)
 
 ### What we accomplished
