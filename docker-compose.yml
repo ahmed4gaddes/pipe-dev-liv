@@ -364,6 +364,35 @@ services:
     restart: unless-stopped
 
   # =====================================================================
+  #  NGROK — Tunnel HTTPS pour recevoir les Webhooks GitHub en local
+  #
+  #  Expose l'API Gateway (port 8080) sur une URL publique HTTPS.
+  #  Nécessite un compte gratuit : https://dashboard.ngrok.com
+  #  → Copier votre Authtoken dans .env (NGROK_AUTHTOKEN=...)
+  #
+  #  Dashboard local : http://localhost:4040
+  #    → Affiche l'URL publique générée et le trafic en temps réel.
+  #
+  #  Utilisation :
+  #    docker compose up -d ngrok        → Démarrer le tunnel
+  #    Ouvrir http://localhost:4040       → Copier l'URL publique
+  #    Coller dans GitHub → Settings → Webhooks → Payload URL
+  #      ex: https://xxxx.ngrok-free.app/api/webhooks/github
+  # =====================================================================
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: pipe-ngrok
+    restart: unless-stopped
+    command: "http host.docker.internal:8080 --log=stdout"
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    ports:
+      - "4040:4040"        # Dashboard Ngrok → http://localhost:4040
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # =====================================================================
   #  ZIPKIN — Tracing distribué (optionnel mais recommandé)
   # =====================================================================
 

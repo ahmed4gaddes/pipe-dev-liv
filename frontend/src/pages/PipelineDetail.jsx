@@ -37,6 +37,23 @@ export default function PipelineDetail() {
     }
   }
 
+  async function downloadReport() {
+    try {
+      const response = await client.get(`/api/pipelines/executions/${id}/report`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `rapport_execution_${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (err) {
+      toast.error('Erreur lors du téléchargement du rapport');
+    }
+  }
+
   if (isLoading) {
     return <Card><SkeletonRows rows={5} /></Card>;
   }
@@ -65,9 +82,14 @@ export default function PipelineDetail() {
           {execution.completedAt && <span className="chip">Terminé {formatDate(execution.completedAt)}</span>}
         </div>
 
-        <Button variant="ghost" onClick={openLogs} loading={loadingLogs}>
-          <Icon name="externalLink" size={16} /> Voir les logs sur GitHub
-        </Button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <Button variant="ghost" onClick={openLogs} loading={loadingLogs}>
+            <Icon name="externalLink" size={16} /> Voir les logs sur GitHub
+          </Button>
+          <Button variant="primary" onClick={downloadReport}>
+             Télécharger le rapport PDF
+          </Button>
+        </div>
       </Card>
 
       <Card>

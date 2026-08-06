@@ -28,6 +28,7 @@ import java.util.Map;
 public class PipelineController {
 
     private final PipelineService pipelineService;
+    private final com.pipedevliv.pipeline.service.PdfReportService pdfReportService;
 
     @PostMapping("/trigger")
     @PreAuthorize("hasRole('TECH_LEAD')")
@@ -63,6 +64,19 @@ public class PipelineController {
     @PreAuthorize("hasRole('VIEWER')")
     public ApiResponse<List<PipelineExecutionDTO>> listByTicket(@PathVariable Long ticketId) {
         return ApiResponse.success(pipelineService.listByTicket(ticketId), "Exécutions du ticket récupérées");
+    }
+
+    @GetMapping(value = "/executions/{id}/report", produces = org.springframework.http.MediaType.APPLICATION_PDF_VALUE)
+    @PreAuthorize("hasRole('VIEWER')")
+    public org.springframework.http.ResponseEntity<byte[]> downloadReport(@PathVariable Long id) {
+        byte[] pdfBytes = pdfReportService.generateExecutionReport(id);
+        
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "rapport_execution_" + id + ".pdf");
+        headers.setCacheControl("must-revalidate, post-check=0, pre-check=0");
+        
+        return new org.springframework.http.ResponseEntity<>(pdfBytes, headers, org.springframework.http.HttpStatus.OK);
     }
 
     private String currentUserId() {

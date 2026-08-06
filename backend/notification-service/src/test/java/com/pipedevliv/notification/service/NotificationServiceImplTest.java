@@ -46,7 +46,7 @@ class NotificationServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new NotificationServiceImpl(notificationRepository, localUserRepository);
+        service = new NotificationServiceImpl(notificationRepository, localUserRepository, new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules());
     }
 
     @Test
