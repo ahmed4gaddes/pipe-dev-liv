@@ -29,9 +29,12 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup environment variables
+        run: cp .env.example .env
 
       - name: Build images
         run: docker compose build user-service ticket-service pipeline-service notification-service audit-service
