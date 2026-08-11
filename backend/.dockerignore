@@ -1,0 +1,25 @@
+# Exclure les fichiers inutiles du contexte Docker
+# (réduit la taille du transfert et accélère le build)
+
+# Répertoires target locaux (le build se fait dans Docker maintenant)
+**/target/
+
+# IDE
+**/.idea/
+**/.vscode/
+**/*.iml
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Maven wrapper jar (Maven est dans l'image Docker)
+.mvn/wrapper/maven-wrapper.jar
+
+# Logs
+**/*.log
+
+# OS
+**/Thumbs.db
+**/.DS_Store

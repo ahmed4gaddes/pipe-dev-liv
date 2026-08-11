@@ -12,9 +12,9 @@
 #    docker compose down                    → Tout arrêter                    #
 #    docker compose down -v                 → Tout arrêter + supprimer data   #
 #                                                                             #
-#  NB : user-service attend un jar déjà construit (Dockerfile mono-stage) :   #
-#    mvn -pl user-service -am package -DskipTests   (depuis backend/)         #
-#    puis : docker compose up -d --build user-service                        #
+#  NB : les Dockerfiles sont multi-stage (Maven build intégré).               #
+#  Aucun pré-build n'est nécessaire :                                         #
+#    docker compose up -d --build user-service   ← suffit                    #
 ###############################################################################
 
 services:
@@ -181,8 +181,8 @@ services:
 
   user-service:
     build:
-      context: ./backend/user-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: user-service/Dockerfile
     container_name: pipe-user-service
     environment:
       DB_HOST: postgres-users
@@ -211,8 +211,8 @@ services:
 
   ticket-service:
     build:
-      context: ./backend/ticket-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: ticket-service/Dockerfile
     container_name: pipe-ticket-service
     environment:
       DB_HOST: postgres-tickets
@@ -239,8 +239,8 @@ services:
 
   pipeline-service:
     build:
-      context: ./backend/pipeline-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: pipeline-service/Dockerfile
     container_name: pipe-pipeline-service
     environment:
       DB_HOST: postgres-pipelines
@@ -271,8 +271,8 @@ services:
 
   notification-service:
     build:
-      context: ./backend/notification-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: notification-service/Dockerfile
     container_name: pipe-notification-service
     environment:
       DB_HOST: postgres-notifications
@@ -299,8 +299,8 @@ services:
 
   audit-service:
     build:
-      context: ./backend/audit-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: audit-service/Dockerfile
     container_name: pipe-audit-service
     environment:
       DB_HOST: postgres-audit
