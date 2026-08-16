@@ -34,7 +34,14 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup environment variables
-        run: cp .env.example .env
+        shell: bash
+        run: |
+          cp .env.example .env
+          # .env.example met EUREKA_HOST=localhost (correct pour les services lancés nativement
+          # sur l'hôte, ex. IDE). Depuis un conteneur Docker, "localhost" désigne le conteneur
+          # lui-même, pas l'hôte : on force host.docker.internal ici pour que user/ticket/pipeline/
+          # notification/audit-service (conteneurisés) joignent bien discovery-server (sur l'hôte).
+          sed -i 's/^EUREKA_HOST=.*/EUREKA_HOST=host.docker.internal/' .env
 
       - name: Build images
         run: docker compose build user-service ticket-service pipeline-service notification-service audit-service
