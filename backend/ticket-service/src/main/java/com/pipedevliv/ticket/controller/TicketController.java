@@ -124,7 +124,7 @@ public class TicketController {
     }
 
     @GetMapping("/stats")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('VIEWER')")
     public ApiResponse<TicketStatsDTO> getStats() {
         return ApiResponse.success(ticketService.getStats(), "Statistiques récupérées");
     }
