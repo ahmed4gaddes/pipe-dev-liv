@@ -24,6 +24,14 @@ spring:
     username: ${RABBIT_USER}
     password: ${RABBIT_PASSWORD}
 
+  # TicketServiceClient#updatePipelineStatus utilise PATCH, non supporté par le client Feign
+  # par défaut (HttpURLConnection du JDK). Bascule vers Apache HttpClient 5 (feign-hc5).
+  cloud:
+    openfeign:
+      httpclient:
+        hc5:
+          enabled: true
+
 eureka:
   client:
     service-url:

@@ -42,6 +42,13 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
         </dependency>
+        <!-- Le client Feign par défaut (HttpURLConnection du JDK) rejette PATCH avec
+             ProtocolException: Invalid HTTP method: PATCH (TicketServiceClient#updatePipelineStatus
+             en a besoin). Apache HttpClient 5 le supporte. -->
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-hc5</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.github.librepdf</groupId>
             <artifactId>openpdf</artifactId>

@@ -197,6 +197,9 @@ services:
       # sur la machine hôte (mvn spring-boot:run / IDE), d'où le passage par host.docker.internal.
       EUREKA_HOST: ${EUREKA_HOST:-host.docker.internal}
       EUREKA_PORT: ${EUREKA_PORT:-8761}
+      # Adresse à laquelle ce conteneur s'annonce auprès d'Eureka (au lieu de son hostname
+      # Docker interne, injoignable depuis discovery-server/api-gateway natifs). Voir .env.
+      EUREKA_INSTANCE_HOSTNAME: ${EUREKA_INSTANCE_HOSTNAME}
       GATEWAY_INTERNAL_SECRET: ${GATEWAY_INTERNAL_SECRET}
     ports:
       - "8081:8081"
@@ -225,6 +228,7 @@ services:
       RABBIT_PASSWORD: ${RABBIT_PASSWORD}
       EUREKA_HOST: ${EUREKA_HOST:-host.docker.internal}
       EUREKA_PORT: ${EUREKA_PORT:-8761}
+      EUREKA_INSTANCE_HOSTNAME: ${EUREKA_INSTANCE_HOSTNAME}
       GATEWAY_INTERNAL_SECRET: ${GATEWAY_INTERNAL_SECRET}
     ports:
       - "8082:8082"
@@ -253,6 +257,7 @@ services:
       RABBIT_PASSWORD: ${RABBIT_PASSWORD}
       EUREKA_HOST: ${EUREKA_HOST:-host.docker.internal}
       EUREKA_PORT: ${EUREKA_PORT:-8761}
+      EUREKA_INSTANCE_HOSTNAME: ${EUREKA_INSTANCE_HOSTNAME}
       GATEWAY_INTERNAL_SECRET: ${GATEWAY_INTERNAL_SECRET}
       GH_PAT_TOKEN: ${GH_PAT_TOKEN}
       GH_WEBHOOK_SECRET: ${GH_WEBHOOK_SECRET}
@@ -285,6 +290,7 @@ services:
       RABBIT_PASSWORD: ${RABBIT_PASSWORD}
       EUREKA_HOST: ${EUREKA_HOST:-host.docker.internal}
       EUREKA_PORT: ${EUREKA_PORT:-8761}
+      EUREKA_INSTANCE_HOSTNAME: ${EUREKA_INSTANCE_HOSTNAME}
       GATEWAY_INTERNAL_SECRET: ${GATEWAY_INTERNAL_SECRET}
     ports:
       - "8084:8084"
@@ -313,6 +319,7 @@ services:
       RABBIT_PASSWORD: ${RABBIT_PASSWORD}
       EUREKA_HOST: ${EUREKA_HOST:-host.docker.internal}
       EUREKA_PORT: ${EUREKA_PORT:-8761}
+      EUREKA_INSTANCE_HOSTNAME: ${EUREKA_INSTANCE_HOSTNAME}
       GATEWAY_INTERNAL_SECRET: ${GATEWAY_INTERNAL_SECRET}
     ports:
       - "8085:8085"

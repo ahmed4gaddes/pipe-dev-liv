@@ -49,7 +49,7 @@ export default function PipelineDetail() {
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
-    } catch (err) {
+    } catch {
       toast.error('Erreur lors du téléchargement du rapport');
     }
   }
