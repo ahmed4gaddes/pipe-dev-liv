@@ -74,7 +74,13 @@ class TicketServiceIntegrationIT {
 
     @BeforeEach
     void bindAnonymousTestQueue() {
-        Queue queue = amqpAdmin.declareQueue();
+        // amqpAdmin.declareQueue() sans argument déclare une file exclusive ET auto-delete : le
+        // consommateur temporaire ouvert par le premier rabbitTemplate.receive() se désabonne une
+        // fois le message reçu, ce qui supprime immédiatement la file auto-delete — le second
+        // receive() de ce test échoue alors avec NOT_FOUND. On garde exclusive (nettoyée à la
+        // fermeture de la connexion Testcontainers) mais pas auto-delete.
+        Queue queue = new Queue(java.util.UUID.randomUUID().toString(), false, true, false);
+        amqpAdmin.declareQueue(queue);
         testQueueName = queue.getName();
         Binding binding = BindingBuilder.bind(queue).to(eventsExchange).with("ticket.*");
         amqpAdmin.declareBinding(binding);
