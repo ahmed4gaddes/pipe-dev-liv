@@ -33,8 +33,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # NE PAS copier .env.example ici : docker compose (sans project name explicite) nomme son
+      # projet d'après le dossier courant, identique à celui du clone de dev sur cette même
+      # machine ("pipe-dev-liv") -> "docker compose up" recrée LES MÊMES conteneurs que la stack
+      # locale. Un .env de placeholders (DB_PASSWORD=CHANGE_ME, etc.) écraserait alors les vrais
+      # secrets et ferait crash-looper les services (auth DB invalide) à chaque déploiement.
       - name: Setup environment variables
-        run: cp .env.example .env
+        shell: bash
+        run: cp "/c/Users/user/IdeaProjects/pipe-dev-liv/.env" .env
 
       - name: Build images
         run: docker compose build user-service ticket-service pipeline-service notification-service audit-service
