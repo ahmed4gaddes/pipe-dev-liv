@@ -18,6 +18,12 @@ spring:
     password: ${RABBIT_PASSWORD}
 
 eureka:
+  instance:
+    # ID stable (indépendant du hostname du conteneur, qui change à chaque recreate) : sans ça,
+    # chaque `docker compose up --force-recreate` laisse une entrée DOWN fantôme dans Eureka à
+    # côté de la nouvelle instance UP, et le load-balancer de la gateway route ~1 requête sur 2
+    # vers l'instance morte tant que le bail n'a pas expiré.
+    instance-id: ${spring.application.name}:${server.port}
   client:
     service-url:
       defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:8761}/eureka/
