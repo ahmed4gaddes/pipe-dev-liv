@@ -44,32 +44,48 @@ public class PipelineServiceImpl implements PipelineService {
     @Override
     @Transactional
     public PipelineExecutionDTO triggerPipeline(PipelineTriggerDTO dto, String triggeredByUserId) {
+        String branch = (dto.getGitBranch() == null || dto.getGitBranch().trim().isEmpty()) ? "main" : dto.getGitBranch();
+
         PipelineExecution execution = PipelineExecution.builder()
                 .ticketId(dto.getTicketId())
                 .environment(dto.getTargetEnvironment())
                 .status(PipelineStatus.QUEUED)
                 .triggerType("MANUAL")
                 .triggeredByUserId(triggeredByUserId)
-                .gitBranch(dto.getGitBranch())
+                .gitBranch(branch)
                 .gitCommitSha(dto.getGitCommitSha())
                 .build();
         execution = executionRepository.save(execution);
 
-        gitHubActionsClient.triggerWorkflow(dto.getGitBranch(), Map.of(
+        gitHubActionsClient.triggerWorkflow(branch, Map.of(
                 "environment", dto.getTargetEnvironment() == null ? "" : dto.getTargetEnvironment().toLowerCase(),
                 "ticket_id", String.valueOf(dto.getTicketId())));
 
-        Optional<Long> runId = gitHubActionsClient.findLatestRunId(dto.getGitBranch());
+        // workflow_dispatch ne renvoie pas d'ID (204 No Content) et GitHub met parfois 1-2s à
+        // indexer le nouveau run dans l'API de listing : sans ce court délai, findLatestRunId
+        // retombe sur le run précédent (déjà terminé) au lieu du nouveau, corrélant l'exécution
+        // au mauvais run GitHub Actions.
+        waitForGitHubIndexing();
+
+        Optional<Long> runId = gitHubActionsClient.findLatestRunId(branch);
         if (runId.isPresent()) {
             execution.setGithubRunId(runId.get());
             execution = executionRepository.save(execution);
         } else {
             log.warn("Impossible de corréler immédiatement le run GitHub Actions pour le ticket {} (branche {})",
-                    dto.getTicketId(), dto.getGitBranch());
+                    dto.getTicketId(), branch);
         }
 
         eventPublisher.publishStarted(execution);
         return toDTO(execution);
+    }
+
+    private void waitForGitHubIndexing() {
+        try {
+            Thread.sleep(Duration.ofSeconds(2).toMillis());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Override

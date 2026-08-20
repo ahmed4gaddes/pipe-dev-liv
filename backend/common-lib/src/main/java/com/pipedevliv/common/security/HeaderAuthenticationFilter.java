@@ -54,6 +54,7 @@ public class HeaderAuthenticationFilter extends OncePerRequestFilter {
             List<SimpleGrantedAuthority> authorities = List.of();
             if (rolesHeader != null && !rolesHeader.isEmpty()) {
                 authorities = Arrays.stream(rolesHeader.split(","))
+                        .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role)
                         .map(SimpleGrantedAuthority::new)
                         .collect(Collectors.toList());
             }

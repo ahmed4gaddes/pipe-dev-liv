@@ -7,6 +7,7 @@ import com.pipedevliv.common.security.SecurityConfig;
 import com.pipedevliv.pipeline.dto.PipelineExecutionDTO;
 import com.pipedevliv.pipeline.dto.PipelineStageDTO;
 import com.pipedevliv.pipeline.dto.PipelineTriggerDTO;
+import com.pipedevliv.pipeline.service.PdfReportService;
 import com.pipedevliv.pipeline.service.PipelineService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,9 @@ class PipelineControllerTest {
 
     @MockBean
     private PipelineService pipelineService;
+
+    @MockBean
+    private PdfReportService pdfReportService;
 
     @AfterEach
     void clearSecurityContext() {

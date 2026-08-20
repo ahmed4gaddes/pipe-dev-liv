@@ -1,5 +1,27 @@
-FROM eclipse-temurin:17-jdk-alpine
+# === Stage 1 : Build avec Maven ===
+FROM maven:3.9-eclipse-temurin-17-alpine AS build
+WORKDIR /workspace
+
+# Copier tous les POM (résolution du reactor multi-module)
+COPY pom.xml .
+COPY common-lib/pom.xml common-lib/pom.xml
+COPY discovery-server/pom.xml discovery-server/pom.xml
+COPY api-gateway/pom.xml api-gateway/pom.xml
+COPY user-service/pom.xml user-service/pom.xml
+COPY ticket-service/pom.xml ticket-service/pom.xml
+COPY pipeline-service/pom.xml pipeline-service/pom.xml
+COPY notification-service/pom.xml notification-service/pom.xml
+COPY audit-service/pom.xml audit-service/pom.xml
+
+# Copier le source de common-lib (dépendance partagée) + ce service
+COPY common-lib/src common-lib/src
+COPY ticket-service/src ticket-service/src
+
+# Build : Maven gère l'ordre (common-lib → ticket-service)
+RUN mvn package -pl ticket-service -am -DskipTests -B
+
+# === Stage 2 : Image runtime légère (JRE seul) ===
+FROM eclipse-temurin:17-jre-alpine
 VOLUME /tmp
-ARG JAR_FILE=target/*.jar
-COPY ${JAR_FILE} app.jar
-ENTRYPOINT ["java","-jar","/app.jar"]
+COPY --from=build /workspace/ticket-service/target/*.jar app.jar
+ENTRYPOINT ["java", "-jar", "/app.jar"]

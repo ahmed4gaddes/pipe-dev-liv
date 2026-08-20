@@ -12,9 +12,9 @@
 #    docker compose down                    → Tout arrêter                    #
 #    docker compose down -v                 → Tout arrêter + supprimer data   #
 #                                                                             #
-#  NB : user-service attend un jar déjà construit (Dockerfile mono-stage) :   #
-#    mvn -pl user-service -am package -DskipTests   (depuis backend/)         #
-#    puis : docker compose up -d --build user-service                        #
+#  NB : les Dockerfiles sont multi-stage (Maven build intégré).               #
+#  Aucun pré-build n'est nécessaire :                                         #
+#    docker compose up -d --build user-service   ← suffit                    #
 ###############################################################################
 
 services:
@@ -181,8 +181,8 @@ services:
 
   user-service:
     build:
-      context: ./backend/user-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: user-service/Dockerfile
     container_name: pipe-user-service
     environment:
       DB_HOST: postgres-users
@@ -197,6 +197,9 @@ services:
       # sur la machine hôte (mvn spring-boot:run / IDE), d'où le passage par host.docker.internal.
       EUREKA_HOST: ${EUREKA_HOST:-host.docker.internal}
       EUREKA_PORT: ${EUREKA_PORT:-8761}
+      # Adresse à laquelle ce conteneur s'annonce auprès d'Eureka (au lieu de son hostname
+      # Docker interne, injoignable depuis discovery-server/api-gateway natifs). Voir .env.
+      EUREKA_INSTANCE_HOSTNAME: ${EUREKA_INSTANCE_HOSTNAME}
       GATEWAY_INTERNAL_SECRET: ${GATEWAY_INTERNAL_SECRET}
     ports:
       - "8081:8081"
@@ -211,8 +214,8 @@ services:
 
   ticket-service:
     build:
-      context: ./backend/ticket-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: ticket-service/Dockerfile
     container_name: pipe-ticket-service
     environment:
       DB_HOST: postgres-tickets
@@ -225,6 +228,7 @@ services:
       RABBIT_PASSWORD: ${RABBIT_PASSWORD}
       EUREKA_HOST: ${EUREKA_HOST:-host.docker.internal}
       EUREKA_PORT: ${EUREKA_PORT:-8761}
+      EUREKA_INSTANCE_HOSTNAME: ${EUREKA_INSTANCE_HOSTNAME}
       GATEWAY_INTERNAL_SECRET: ${GATEWAY_INTERNAL_SECRET}
     ports:
       - "8082:8082"
@@ -239,8 +243,8 @@ services:
 
   pipeline-service:
     build:
-      context: ./backend/pipeline-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: pipeline-service/Dockerfile
     container_name: pipe-pipeline-service
     environment:
       DB_HOST: postgres-pipelines
@@ -253,6 +257,7 @@ services:
       RABBIT_PASSWORD: ${RABBIT_PASSWORD}
       EUREKA_HOST: ${EUREKA_HOST:-host.docker.internal}
       EUREKA_PORT: ${EUREKA_PORT:-8761}
+      EUREKA_INSTANCE_HOSTNAME: ${EUREKA_INSTANCE_HOSTNAME}
       GATEWAY_INTERNAL_SECRET: ${GATEWAY_INTERNAL_SECRET}
       GH_PAT_TOKEN: ${GH_PAT_TOKEN}
       GH_WEBHOOK_SECRET: ${GH_WEBHOOK_SECRET}
@@ -271,8 +276,8 @@ services:
 
   notification-service:
     build:
-      context: ./backend/notification-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: notification-service/Dockerfile
     container_name: pipe-notification-service
     environment:
       DB_HOST: postgres-notifications
@@ -285,6 +290,7 @@ services:
       RABBIT_PASSWORD: ${RABBIT_PASSWORD}
       EUREKA_HOST: ${EUREKA_HOST:-host.docker.internal}
       EUREKA_PORT: ${EUREKA_PORT:-8761}
+      EUREKA_INSTANCE_HOSTNAME: ${EUREKA_INSTANCE_HOSTNAME}
       GATEWAY_INTERNAL_SECRET: ${GATEWAY_INTERNAL_SECRET}
     ports:
       - "8084:8084"
@@ -299,8 +305,8 @@ services:
 
   audit-service:
     build:
-      context: ./backend/audit-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: audit-service/Dockerfile
     container_name: pipe-audit-service
     environment:
       DB_HOST: postgres-audit
@@ -313,6 +319,7 @@ services:
       RABBIT_PASSWORD: ${RABBIT_PASSWORD}
       EUREKA_HOST: ${EUREKA_HOST:-host.docker.internal}
       EUREKA_PORT: ${EUREKA_PORT:-8761}
+      EUREKA_INSTANCE_HOSTNAME: ${EUREKA_INSTANCE_HOSTNAME}
       GATEWAY_INTERNAL_SECRET: ${GATEWAY_INTERNAL_SECRET}
     ports:
       - "8085:8085"
@@ -362,6 +369,35 @@ services:
       - sonarqube_logs:/opt/sonarqube/logs
       - sonarqube_extensions:/opt/sonarqube/extensions
     restart: unless-stopped
+
+  # =====================================================================
+  #  NGROK — Tunnel HTTPS pour recevoir les Webhooks GitHub en local
+  #
+  #  Expose l'API Gateway (port 8080) sur une URL publique HTTPS.
+  #  Nécessite un compte gratuit : https://dashboard.ngrok.com
+  #  → Copier votre Authtoken dans .env (NGROK_AUTHTOKEN=...)
+  #
+  #  Dashboard local : http://localhost:4040
+  #    → Affiche l'URL publique générée et le trafic en temps réel.
+  #
+  #  Utilisation :
+  #    docker compose up -d ngrok        → Démarrer le tunnel
+  #    Ouvrir http://localhost:4040       → Copier l'URL publique
+  #    Coller dans GitHub → Settings → Webhooks → Payload URL
+  #      ex: https://xxxx.ngrok-free.app/api/webhooks/github
+  # =====================================================================
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: pipe-ngrok
+    restart: unless-stopped
+    command: "http host.docker.internal:8080 --log=stdout"
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    ports:
+      - "4040:4040"        # Dashboard Ngrok → http://localhost:4040
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # =====================================================================
   #  ZIPKIN — Tracing distribué (optionnel mais recommandé)

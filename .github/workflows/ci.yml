@@ -53,6 +53,7 @@ jobs:
       - uses: actions/setup-java@v4
         with: { java-version: '17', distribution: 'temurin' }
       - run: cd backend && ./mvnw -pl common-lib clean install -DskipTests
+        shell: bash
 
   build-discovery-server:
     needs: [detect-changes, build-common]
@@ -65,6 +66,7 @@ jobs:
       - uses: actions/setup-java@v4
         with: { java-version: '17', distribution: 'temurin' }
       - run: cd backend && ./mvnw clean verify -pl common-lib,discovery-server
+        shell: bash
 
   build-api-gateway:
     needs: [detect-changes, build-common]
@@ -77,6 +79,7 @@ jobs:
       - uses: actions/setup-java@v4
         with: { java-version: '17', distribution: 'temurin' }
       - run: cd backend && ./mvnw clean verify -pl common-lib,api-gateway
+        shell: bash
 
   build-user-service:
     needs: [detect-changes, build-common]
@@ -89,8 +92,10 @@ jobs:
       - uses: actions/setup-java@v4
         with: { java-version: '17', distribution: 'temurin' }
       - run: cd backend && ./mvnw clean verify -pl common-lib,user-service
+        shell: bash
       - uses: actions/upload-artifact@v4
         if: always()
+        continue-on-error: true
         with:
           name: user-service-jacoco
           path: backend/user-service/target/site/jacoco/jacoco.xml
@@ -107,8 +112,10 @@ jobs:
       - uses: actions/setup-java@v4
         with: { java-version: '17', distribution: 'temurin' }
       - run: cd backend && ./mvnw clean verify -pl common-lib,ticket-service
+        shell: bash
       - uses: actions/upload-artifact@v4
         if: always()
+        continue-on-error: true
         with:
           name: ticket-service-jacoco
           path: backend/ticket-service/target/site/jacoco/jacoco.xml
@@ -125,8 +132,10 @@ jobs:
       - uses: actions/setup-java@v4
         with: { java-version: '17', distribution: 'temurin' }
       - run: cd backend && ./mvnw clean verify -pl common-lib,pipeline-service
+        shell: bash
       - uses: actions/upload-artifact@v4
         if: always()
+        continue-on-error: true
         with:
           name: pipeline-service-jacoco
           path: backend/pipeline-service/target/site/jacoco/jacoco.xml
@@ -143,8 +152,10 @@ jobs:
       - uses: actions/setup-java@v4
         with: { java-version: '17', distribution: 'temurin' }
       - run: cd backend && ./mvnw clean verify -pl common-lib,notification-service
+        shell: bash
       - uses: actions/upload-artifact@v4
         if: always()
+        continue-on-error: true
         with:
           name: notification-service-jacoco
           path: backend/notification-service/target/site/jacoco/jacoco.xml
@@ -161,8 +172,10 @@ jobs:
       - uses: actions/setup-java@v4
         with: { java-version: '17', distribution: 'temurin' }
       - run: cd backend && ./mvnw clean verify -pl common-lib,audit-service
+        shell: bash
       - uses: actions/upload-artifact@v4
         if: always()
+        continue-on-error: true
         with:
           name: audit-service-jacoco
           path: backend/audit-service/target/site/jacoco/jacoco.xml
@@ -177,6 +190,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
       - run: cd frontend && npm ci && npm run lint && npm run build
+        shell: bash
 
   # Analyse SonarQube — le scanner Maven (pas l'action générique SonarSource/sonarqube-scan-action,
   # pensée pour des projets non-Java) pour que les 6 modules applicatifs soient analysés comme un
@@ -199,6 +213,7 @@ jobs:
       - uses: actions/setup-java@v4
         with: { java-version: '17', distribution: 'temurin' }
       - name: Analyse SonarQube (reactor complet)
+        shell: bash
         run: |
           cd backend && ./mvnw clean verify sonar:sonar \
             -Dsonar.host.url=http://localhost:9000 \
@@ -215,9 +230,11 @@ jobs:
       - uses: actions/setup-java@v4
         with: { java-version: '17', distribution: 'temurin' }
       - run: cd backend && ./mvnw org.owasp:dependency-check-maven:aggregate
+        shell: bash
         continue-on-error: true
       - uses: actions/upload-artifact@v4
         if: always()
+        continue-on-error: true
         with:
           name: dependency-check-report
           path: backend/target/dependency-check-report.html

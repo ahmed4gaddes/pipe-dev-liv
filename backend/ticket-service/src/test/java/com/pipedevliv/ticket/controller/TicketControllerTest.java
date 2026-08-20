@@ -283,12 +283,17 @@ class TicketControllerTest {
                 .andExpect(jsonPath("$.data.totalTickets").value(5));
     }
 
+    // Le dashboard affiche "Tickets au total" / "Répartition par statut" à tous les profils
+    // (pas seulement ADMIN), et ces agrégats ne révèlent rien qu'un VIEWER ne puisse déjà
+    // recalculer lui-même en paginant GET /api/tickets. Voir getStats_asViewer_succeeds.
     @Test
-    void getStats_asTechLead_forbidden() throws Exception {
-        authenticateAs("tl-1", "ROLE_TECH_LEAD");
+    void getStats_asViewer_succeeds() throws Exception {
+        authenticateAs("viewer-1", "ROLE_VIEWER");
+        when(ticketService.getStats()).thenReturn(TicketStatsDTO.builder().totalTickets(10).build());
 
         mockMvc.perform(get("/api/tickets/stats"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalTickets").value(10));
     }
 
     /**

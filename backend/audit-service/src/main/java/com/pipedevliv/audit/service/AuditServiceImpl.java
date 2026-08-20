@@ -33,18 +33,32 @@ public class AuditServiceImpl implements AuditService {
     @Override
     @Transactional
     public void handleEvent(String routingKey, Object payload) {
-        switch (routingKey) {
-            case RabbitMQConstants.USER_SYNCED -> handleUserSynced((UserSyncedPayload) payload);
-            case RabbitMQConstants.TICKET_CREATED -> handleTicketCreated((TicketCreatedPayload) payload);
-            case RabbitMQConstants.TICKET_STATUS_CHANGED -> handleTicketStatusChanged((TicketEventPayload) payload);
-            case RabbitMQConstants.TICKET_APPROVED -> handleTicketApproved((TicketEventPayload) payload);
-            case RabbitMQConstants.PIPELINE_STARTED ->
-                    handlePipelineEvent((PipelineEventPayload) payload, AuditEventType.PIPELINE_STARTED);
-            case RabbitMQConstants.PIPELINE_COMPLETED ->
-                    handlePipelineEvent((PipelineEventPayload) payload, AuditEventType.PIPELINE_COMPLETED);
-            case RabbitMQConstants.PIPELINE_FAILED ->
-                    handlePipelineEvent((PipelineEventPayload) payload, AuditEventType.PIPELINE_FAILED);
-            default -> log.warn("Routing key non gérée par audit-service : {}", routingKey);
+        try {
+            // Si Spring AMQP n'a pas pu désérialiser (TypeId mismatch), on reçoit un Message brut
+            Object jsonPayload = payload;
+            if (payload instanceof org.springframework.amqp.core.Message msg) {
+                jsonPayload = objectMapper.readValue(msg.getBody(), Object.class);
+            }
+
+            switch (routingKey) {
+                case RabbitMQConstants.USER_SYNCED ->
+                        handleUserSynced(objectMapper.convertValue(jsonPayload, UserSyncedPayload.class));
+                case RabbitMQConstants.TICKET_CREATED ->
+                        handleTicketCreated(objectMapper.convertValue(jsonPayload, TicketCreatedPayload.class));
+                case RabbitMQConstants.TICKET_STATUS_CHANGED ->
+                        handleTicketStatusChanged(objectMapper.convertValue(jsonPayload, TicketEventPayload.class));
+                case RabbitMQConstants.TICKET_APPROVED ->
+                        handleTicketApproved(objectMapper.convertValue(jsonPayload, TicketEventPayload.class));
+                case RabbitMQConstants.PIPELINE_STARTED ->
+                        handlePipelineEvent(objectMapper.convertValue(jsonPayload, PipelineEventPayload.class), AuditEventType.PIPELINE_STARTED);
+                case RabbitMQConstants.PIPELINE_COMPLETED ->
+                        handlePipelineEvent(objectMapper.convertValue(jsonPayload, PipelineEventPayload.class), AuditEventType.PIPELINE_COMPLETED);
+                case RabbitMQConstants.PIPELINE_FAILED ->
+                        handlePipelineEvent(objectMapper.convertValue(jsonPayload, PipelineEventPayload.class), AuditEventType.PIPELINE_FAILED);
+                default -> log.warn("Routing key non gérée par audit-service : {}", routingKey);
+            }
+        } catch (Exception e) {
+            log.error("Erreur lors du traitement de l'événement audit [{}] : {}", routingKey, e.getMessage(), e);
         }
     }
 
