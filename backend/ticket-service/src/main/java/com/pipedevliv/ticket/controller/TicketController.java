@@ -22,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -72,6 +73,13 @@ public class TicketController {
     @PreAuthorize("hasRole('TECH_LEAD') or (hasRole('DEVELOPER') and @ticketService.isOwner(#id, authentication.name))")
     public ApiResponse<TicketResponseDTO> updateTicket(@PathVariable Long id, @Valid @RequestBody TicketUpdateDTO dto) {
         return ApiResponse.success(ticketService.updateTicket(id, dto), "Ticket mis à jour");
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('TECH_LEAD') or (hasRole('DEVELOPER') and @ticketService.isOwner(#id, authentication.name))")
+    public ApiResponse<Void> deleteTicket(@PathVariable Long id) {
+        ticketService.deleteTicket(id);
+        return ApiResponse.success(null, "Ticket supprimé");
     }
 
     @PatchMapping("/{id}/status")

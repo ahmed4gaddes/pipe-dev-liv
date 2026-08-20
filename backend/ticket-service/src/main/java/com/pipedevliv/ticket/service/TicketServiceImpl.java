@@ -119,6 +119,18 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
+    @Transactional
+    public void deleteTicket(Long id) {
+        Ticket ticket = findTicketOrThrow(id);
+        if (ticket.getStatus() != TicketStatus.DRAFT) {
+            throw new BusinessException("Seul un ticket en DRAFT peut être supprimé");
+        }
+        ticketCommentRepository.deleteByTicketId(id);
+        ticketHistoryRepository.deleteByTicketId(id);
+        ticketRepository.delete(ticket);
+    }
+
+    @Override
     public boolean isOwner(Long id, String userId) {
         return ticketRepository.existsByIdAndCreatedByUserId(id, userId);
     }

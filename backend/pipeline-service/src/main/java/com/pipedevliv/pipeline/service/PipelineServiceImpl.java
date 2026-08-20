@@ -125,6 +125,17 @@ public class PipelineServiceImpl implements PipelineService {
 
     @Override
     @Transactional
+    public void deleteExecution(Long id) {
+        PipelineExecution execution = findExecutionOrThrow(id);
+        if (execution.getStatus() == PipelineStatus.QUEUED || execution.getStatus() == PipelineStatus.RUNNING) {
+            throw new BusinessException("Impossible de supprimer une exécution en cours");
+        }
+        stageRepository.deleteByExecutionId(id);
+        executionRepository.delete(execution);
+    }
+
+    @Override
+    @Transactional
     public void handleWorkflowRunEvent(GitHubWebhookPayload payload) {
         GitHubWebhookPayload.WorkflowRun workflowRun = payload.getWorkflowRun();
         if (workflowRun == null || workflowRun.getId() == null) {

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { useTickets } from '../api/tickets';
+import { useTickets, useDeleteTicket } from '../api/tickets';
+import { useUsers } from '../api/users';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Table from '../components/ui/Table';
@@ -10,6 +11,7 @@ import StatusPill from '../components/ui/StatusPill';
 import { PriorityBadge } from '../components/ui/Badge';
 import { Select } from '../components/ui/Field';
 import { SkeletonRows } from '../components/ui/Skeleton';
+import DeleteButton from '../components/ui/DeleteButton';
 import { TICKET_STATUSES, TICKET_PRIORITIES } from '../constants/ticket';
 import { labelForStatus } from '../styles/status';
 import './TicketsList.css';
@@ -30,6 +32,14 @@ export default function TicketsList() {
   };
 
   const { data, isLoading } = useTickets(filters, page, 20);
+  const { data: usersData } = useUsers(0, 200);
+  const deleteTicket = useDeleteTicket();
+
+  const usersByKeycloakId = useMemo(() => {
+    const map = {};
+    (usersData?.content ?? []).forEach((u) => { map[u.keycloakId] = u.fullName || u.email; });
+    return map;
+  }, [usersData]);
 
   const columns = [
     { key: 'id', header: '#' },
@@ -37,7 +47,22 @@ export default function TicketsList() {
     { key: 'status', header: 'Statut', render: (t) => <StatusPill status={t.status} /> },
     { key: 'priority', header: 'Priorité', render: (t) => <PriorityBadge priority={t.priority} /> },
     { key: 'targetEnvironment', header: 'Environnement', render: (t) => t.targetEnvironment ?? '—' },
-    { key: 'createdByUserId', header: 'Créé par' },
+    { key: 'createdByUserId', header: 'Créé par', render: (t) => usersByKeycloakId[t.createdByUserId] ?? t.createdByUserId },
+    {
+      key: 'actions',
+      header: '',
+      render: (t) => {
+        const canDelete = t.status === 'DRAFT' && (hasRole('ROLE_TECH_LEAD') || t.createdByUserId === userId);
+        if (!canDelete) return null;
+        return (
+          <DeleteButton
+            title={`Supprimer le ticket #${t.id}`}
+            message={`Le ticket « ${t.title} » sera supprimé définitivement, avec son historique et ses commentaires.`}
+            onDelete={() => deleteTicket.mutateAsync(t.id)}
+          />
+        );
+      },
+    },
   ];
 
   return (

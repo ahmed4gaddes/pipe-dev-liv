@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '../../auth/AuthContext';
+import { useCurrentUser } from '../../api/users';
 import { useUnreadCount } from '../../api/notifications';
 import Icon from '../ui/Icon';
 import Avatar from '../ui/Avatar';
@@ -19,6 +20,11 @@ const NAV_ITEMS = [
 
 export default function AppShell() {
   const { hasRole, fullName, email, logout } = useAuth();
+  // Déclenche la synchronisation du profil (POST implicite via GET /api/users/me, voir
+  // UserController) dès qu'une page protégée par AppShell est atteinte, au lieu de ne le
+  // faire que si l'utilisateur visite /profile — sans ça, "Créé par" ne peut jamais résoudre
+  // le nom d'un utilisateur qui n'a jamais ouvert cette page précise.
+  useCurrentUser();
   const { data: unread } = useUnreadCount();
   const location = useLocation();
   const navigate = useNavigate();

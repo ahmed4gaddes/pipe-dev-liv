@@ -47,6 +47,14 @@ function useInvalidateTicket(id) {
   };
 }
 
+export function useDeleteTicket() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => client.delete(`/api/tickets/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tickets'] }),
+  });
+}
+
 export function useCreateTicket() {
   const queryClient = useQueryClient();
   return useMutation({

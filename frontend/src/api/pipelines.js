@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import client from './client';
 
 export function usePipelineExecutions(page = 0, size = 20) {
@@ -39,5 +39,13 @@ export function usePipelinesByTicket(ticketId) {
     queryKey: ['pipelines', 'by-ticket', ticketId],
     queryFn: () => client.get(`/api/pipelines/executions/by-ticket/${ticketId}`),
     enabled: !!ticketId,
+  });
+}
+
+export function useDeletePipelineExecution() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => client.delete(`/api/pipelines/executions/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pipelines'] }),
   });
 }

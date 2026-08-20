@@ -23,5 +23,7 @@ public interface PipelineService {
 
     String getLogsUrl(Long executionId);
 
+    void deleteExecution(Long id);
+
     void handleWorkflowRunEvent(GitHubWebhookPayload payload);
 }

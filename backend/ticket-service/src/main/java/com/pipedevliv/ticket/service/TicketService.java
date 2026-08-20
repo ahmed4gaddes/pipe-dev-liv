@@ -25,6 +25,8 @@ public interface TicketService {
 
     TicketResponseDTO updateTicket(Long id, TicketUpdateDTO dto);
 
+    void deleteTicket(Long id);
+
     boolean isOwner(Long id, String userId);
 
     TicketResponseDTO changeStatus(Long id, TicketStatusChangeDTO dto, String actingUserId);

@@ -12,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -46,6 +47,13 @@ public class PipelineController {
     @PreAuthorize("hasRole('VIEWER')")
     public ApiResponse<PipelineExecutionDTO> getExecution(@PathVariable Long id) {
         return ApiResponse.success(pipelineService.getExecution(id), "Exécution récupérée");
+    }
+
+    @DeleteMapping("/executions/{id}")
+    @PreAuthorize("hasRole('TECH_LEAD')")
+    public ApiResponse<Void> deleteExecution(@PathVariable Long id) {
+        pipelineService.deleteExecution(id);
+        return ApiResponse.success(null, "Exécution supprimée");
     }
 
     @GetMapping("/executions/{id}/stages")

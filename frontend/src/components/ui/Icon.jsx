@@ -14,6 +14,7 @@ const paths = {
   x: 'M18 6 6 18M6 6l12 12',
   externalLink: 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3',
   check: 'M20 6 9 17l-5-5',
+  trash: 'M4 7h16M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3m3 0-.87 13.14A2 2 0 0 1 15.14 22H8.86a2 2 0 0 1-1.99-1.86L6 7m4 4.5v6m4-6v6',
 };
 
 export default function Icon({ name, size = 20, className = '' }) {
