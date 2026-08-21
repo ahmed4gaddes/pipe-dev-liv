@@ -19,7 +19,7 @@ export default function Splash() {
         transition={{ duration: 0.5, ease: 'easeOut' }}
       >
         <img src={biatLogo} alt="BIAT Innovation & Technology" className="splash-logo" />
-        <h1 className="splash-title">Pipe Dev Liv</h1>
+        <h1 className="splash-title">BIAT Flow</h1>
         <p className="splash-tagline">
           Plateforme de livraison continue — tickets, pipelines et audit, du même endroit.
         </p>

@@ -39,7 +39,7 @@ export default function AppShell() {
       <aside className="sidebar">
         <div className="sidebar-brand">
           <img src={biatLogo} alt="BIAT Innovation & Technology" className="sidebar-logo" />
-          <div className="sidebar-product">Pipe&nbsp;Dev&nbsp;Liv</div>
+          <div className="sidebar-product">BIAT&nbsp;Flow</div>
         </div>
 
         <nav className="sidebar-nav">

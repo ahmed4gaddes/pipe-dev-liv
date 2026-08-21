@@ -15,7 +15,7 @@
     <packaging>pom</packaging>
     
     <name>pipe-dev-liv-backend</name>
-    <description>Projet Parent pour les microservices Pipe Dev Liv</description>
+    <description>Projet Parent pour les microservices BIAT Flow</description>
 
     <modules>
         <module>common-lib</module>
