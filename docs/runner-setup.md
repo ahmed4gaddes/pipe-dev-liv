@@ -56,6 +56,13 @@ STACK_DIR=C:/Users/<vous>/IdeaProjects/pipe-dev-liv
 # d'API compatibles.
 DOCKER_HOST=tcp://localhost:2375
 DOCKER_API_VERSION=1.44
+
+# Token d'analyse du SonarQube QUI TOURNE SUR CETTE MACHINE (type Global Analysis Token).
+# Chaque développeur ayant son propre SonarQube sur localhost:9000, un token généré par l'un
+# est refusé par l'instance de l'autre : le secret SONAR_TOKEN du dépôt, unique et partagé,
+# ne peut donc être valide que pour une seule machine. ci.yml lit d'abord cette variable et
+# ne retombe sur le secret du dépôt que si elle est absente.
+SONAR_TOKEN=sqa_...
 ```
 
 `DOCKER_HOST` suppose que l'exposition TCP est activée dans **Docker Desktop → Settings →
@@ -67,6 +74,57 @@ curl http://localhost:2375/version
 
 > Après toute modification de `.env`, **redémarrer le runner** — le fichier n'est lu qu'au
 > démarrage.
+
+---
+
+### Git Bash doit primer sur WSL dans le PATH
+
+`deploy.yml` exécute plusieurs étapes en `shell: bash`. Sur Windows, le runner résout `bash` via
+le PATH — et si WSL est installé, `C:\WINDOWS\system32\bash.exe` (le lanceur WSL) est trouvé
+avant Git Bash. WSL reçoit alors un chemin Windows, interprète les `\` comme des échappements, et
+n'exécute jamais le script :
+
+```
+shell: C:\WINDOWS\system32\bash.EXE --noprofile --norc -e -o pipefail {0}
+/bin/bash: C:actions-runner_work_temp<guid>.sh: No such file or directory
+```
+
+**Le symptôme est trompeur** : les logs affichent quand même `::error::STACK_DIR n'est pas
+défini`, non pas parce que le garde-fou s'est déclenché, mais parce que GitHub imprime le contenu
+du script avant de le lancer. On cherche un problème de configuration alors que le shell n'a
+jamais démarré. Le vrai message est la ligne `No such file or directory` juste en dessous, sur un
+chemin dont les backslashes ont disparu.
+
+Diagnostic :
+
+```bash
+where.exe bash
+```
+
+Si `C:\WINDOWS\system32\bash.exe` sort en premier, il faut placer le dossier `bin` de Git devant
+lui **dans le PATH du processus qui lance le runner**. Attention : ajouter Git à votre PATH
+utilisateur ne suffit pas — Windows concatène le PATH utilisateur *après* le PATH système, donc
+`system32` resterait prioritaire. Il faut soit modifier le PATH machine (invite Administrateur),
+soit lancer le runner via un script qui pose l'environnement, par exemple
+`C:\actions-runner\start-runner.cmd` :
+
+```bat
+@echo off
+set "PATH=C:\Program Files\Git\bin;%PATH%"
+set "STACK_DIR=C:/chemin/vers/votre/clone"
+set "SONAR_TOKEN=sqa_..."
+cd /d "C:\actions-runner"
+call "C:\actions-runner\run.cmd"
+```
+
+> Écrire ce fichier avec des **fins de ligne Windows (CRLF)** et des chemins absolus. Enregistré
+> en LF — ce que fait un éditeur configuré pour Unix, ou une redirection depuis Git Bash —
+> `cmd.exe` échoue sur `'run.cmd' n'est pas reconnu en tant que commande interne ou externe`.
+
+Un raccourci vers ce script dans le dossier `shell:startup` le relance à chaque ouverture de
+session. C'est aussi la façon la plus fiable de définir `STACK_DIR` : les fichiers `.env` et
+`.path` décrits plus haut ne sont lus de manière fiable que par le runner installé **en service**,
+pas par un `run.cmd` lancé à la main.
 
 ---
 
@@ -111,6 +169,11 @@ donc fonctionnelle sans modification.
 | Secret | Contenu |
 |---|---|
 | `SONAR_TOKEN` | Token d'analyse SonarQube. À générer dans SonarQube → *My Account* → *Security* → type **Global Analysis Token**. Un « User Token » est refusé par le scanner. |
+
+> Ce secret n'est qu'un **repli**. Étant unique pour tout le dépôt, il ne peut correspondre qu'à
+> une seule instance SonarQube — celle d'un seul développeur. Dès que vous en faites tourner une
+> sur votre machine, définissez `SONAR_TOKEN` dans l'environnement de votre runner ([§2](#2-variables-denvironnement-du-runner)) :
+> `ci.yml` la préfère au secret.
 
 ---
 
@@ -159,7 +222,9 @@ EUREKA_INSTANCE_HOSTNAME=192.168.1.x
 |---|---|
 | `STACK_DIR n'est pas défini` | `.env` du runner absent/incomplet, ou runner non redémarré depuis sa création. |
 | `Could not find a valid Docker environment` (Testcontainers) | `DOCKER_HOST`/`DOCKER_API_VERSION` absents, ou exposition TCP désactivée dans Docker Desktop. |
+| `No such file or directory` sur un `.sh` dont le chemin a perdu ses backslashes | `shell: bash` résolu vers le bash de WSL au lieu de Git Bash. Le message `STACK_DIR n'est pas défini` affiché juste avant est trompeur. Voir [§2](#git-bash-doit-primer-sur-wsl-dans-le-path). |
 | `Not authorized` à l'analyse SonarQube | `SONAR_TOKEN` invalide ou de type « User Token » au lieu de « Global Analysis Token ». |
+| `ports are not available: ... bind` au déploiement | Les microservices tournent déjà en natif (IDE) sur les ports 8081-8085 que `deploy.yml` veut donner aux conteneurs. Arrêter les instances natives, sauf `discovery-server` et `api-gateway`. |
 | Services en crash-loop après un déploiement | `STACK_DIR` pointe sur un clone dont le `.env` contient encore des `CHANGE_ME`. |
 | Déploiement exécuté sur la machine d'un autre développeur | `GH_RUNNER_LABEL` absent du `.env` de la stack, ou laissé à `self-hosted`, alors qu'un autre runner est en ligne. Voir [§3](#3-plusieurs-runners-sur-le-même-dépôt). |
 | Ticket bloqué en « Déploiement ... » | Attendre une minute : la réconciliation rattrape. Si ça persiste, vérifier les logs de `pipeline-service` et l'accès à l'API GitHub. |
