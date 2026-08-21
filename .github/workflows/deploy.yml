@@ -38,9 +38,22 @@ jobs:
       # machine ("pipe-dev-liv") -> "docker compose up" recrée LES MÊMES conteneurs que la stack
       # locale. Un .env de placeholders (DB_PASSWORD=CHANGE_ME, etc.) écraserait alors les vrais
       # secrets et ferait crash-looper les services (auth DB invalide) à chaque déploiement.
+      #
+      # STACK_DIR = chemin du clone qui héberge la stack locale (celui où vous lancez
+      # docker compose). À définir dans le fichier .env du runner self-hosted — voir
+      # docs/runner-setup.md. Chemin propre à chaque machine, donc jamais en dur ici.
       - name: Setup environment variables
         shell: bash
-        run: cp "/c/Users/user/IdeaProjects/pipe-dev-liv/.env" .env
+        run: |
+          if [ -z "${STACK_DIR:-}" ]; then
+            echo "::error::STACK_DIR n'est pas défini. Ajoutez-le au fichier .env du runner self-hosted (voir docs/runner-setup.md)."
+            exit 1
+          fi
+          if [ ! -f "$STACK_DIR/.env" ]; then
+            echo "::error::Fichier introuvable : $STACK_DIR/.env — vérifiez STACK_DIR et créez le .env depuis .env.example."
+            exit 1
+          fi
+          cp "$STACK_DIR/.env" .env
 
       - name: Build images
         run: docker compose build user-service ticket-service pipeline-service notification-service audit-service

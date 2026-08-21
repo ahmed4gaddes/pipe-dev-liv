@@ -131,8 +131,13 @@ l'analyse SonarQube et des scans de sécurité (Trivy, OWASP Dependency-Check, n
 `.github/workflows/deploy.yml` est le workflow réellement déclenché par `pipeline-service`
 lorsqu'un ticket est approuvé — son statut de complétion revient via le webhook natif GitHub
 `workflow_run`, pas un endpoint personnalisé. Les deux tournent sur un runner self-hosted (accès
-direct à SonarQube et au reste de la stack locale). Détails et étapes de configuration manuelle :
-[explication_phase_9.md](explication_phase_9.md).
+direct à SonarQube et au reste de la stack locale).
+
+**Pour rejouer le pipeline sur votre propre machine**, il faut d'abord configurer le runner
+(variables `STACK_DIR`/`DOCKER_HOST`, secret SonarQube, webhook ngrok) :
+[docs/runner-setup.md](docs/runner-setup.md).
+
+Contexte et décisions de conception : [explication_phase_9.md](explication_phase_9.md).
 
 ---
 
