@@ -196,6 +196,51 @@ class PipelineServiceImplTest {
         verify(eventPublisher, never()).publishFailed(any());
     }
 
+    @Test
+    void reconcilePendingExecutions_completedRunMissedByWebhook_getsFinalizedAndNotifiesTicket() {
+        PipelineExecution execution = existingExecution(999L, PipelineStatus.RUNNING);
+        when(executionRepository.findByStatusInAndGithubRunIdIsNotNull(List.of(PipelineStatus.QUEUED, PipelineStatus.RUNNING)))
+                .thenReturn(List.of(execution));
+        when(executionRepository.save(any(PipelineExecution.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(gitHubActionsClient.getRun(999L)).thenReturn(
+                GitHubRunDTO.builder().id(999L).status("completed").conclusion("success").build());
+        when(gitHubActionsClient.getRunJobs(999L)).thenReturn(List.of());
+
+        pipelineService.reconcilePendingExecutions();
+
+        assertThat(execution.getStatus()).isEqualTo(PipelineStatus.SUCCESS);
+        verify(eventPublisher).publishCompleted(execution);
+        verify(ticketServiceClient).updatePipelineStatus(eq(execution.getTicketId()), any());
+    }
+
+    @Test
+    void reconcilePendingExecutions_stillRunningOnGitHub_leavesExecutionUntouched() {
+        PipelineExecution execution = existingExecution(999L, PipelineStatus.RUNNING);
+        when(executionRepository.findByStatusInAndGithubRunIdIsNotNull(List.of(PipelineStatus.QUEUED, PipelineStatus.RUNNING)))
+                .thenReturn(List.of(execution));
+        when(gitHubActionsClient.getRun(999L)).thenReturn(
+                GitHubRunDTO.builder().id(999L).status("in_progress").build());
+
+        pipelineService.reconcilePendingExecutions();
+
+        assertThat(execution.getStatus()).isEqualTo(PipelineStatus.RUNNING);
+        verify(executionRepository, never()).save(any());
+        verify(ticketServiceClient, never()).updatePipelineStatus(anyLong(), any());
+    }
+
+    @Test
+    void reconcilePendingExecutions_gitHubApiFails_doesNotThrowAndSkipsExecution() {
+        PipelineExecution execution = existingExecution(999L, PipelineStatus.RUNNING);
+        when(executionRepository.findByStatusInAndGithubRunIdIsNotNull(List.of(PipelineStatus.QUEUED, PipelineStatus.RUNNING)))
+                .thenReturn(List.of(execution));
+        when(gitHubActionsClient.getRun(999L)).thenThrow(new RuntimeException("GitHub API indisponible"));
+
+        pipelineService.reconcilePendingExecutions();
+
+        assertThat(execution.getStatus()).isEqualTo(PipelineStatus.RUNNING);
+        verify(executionRepository, never()).save(any());
+    }
+
     private PipelineExecution existingExecution(Long githubRunId, PipelineStatus status) {
         return PipelineExecution.builder()
                 .id(1L)

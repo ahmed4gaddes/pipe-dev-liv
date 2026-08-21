@@ -4,6 +4,7 @@ import com.pipedevliv.common.dto.PageResponse;
 import com.pipedevliv.common.exception.BusinessException;
 import com.pipedevliv.common.exception.ResourceNotFoundException;
 import com.pipedevliv.pipeline.dto.GitHubJobDTO;
+import com.pipedevliv.pipeline.dto.GitHubRunDTO;
 import com.pipedevliv.pipeline.dto.GitHubWebhookPayload;
 import com.pipedevliv.pipeline.dto.PipelineExecutionDTO;
 import com.pipedevliv.pipeline.dto.PipelineStageDTO;
@@ -21,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -149,17 +151,63 @@ public class PipelineServiceImpl implements PipelineService {
                     workflowRun.getId(), payload.getAction());
             return;
         }
-        PipelineExecution execution = executionOpt.get();
+        applyRunUpdate(executionOpt.get(), workflowRun.getStatus(), workflowRun.getConclusion());
+    }
 
-        if (!"completed".equals(payload.getAction())) {
-            if ("in_progress".equals(workflowRun.getStatus())) {
+    // Filet de sécurité : le webhook GitHub est le chemin normal, mais peut être manqué
+    // (tunnel ngrok tombé, runner self-hosted arrêté, 5xx transitoire juste après un
+    // redéploiement — tous des incidents déjà vécus sur cette stack). Ce job périodique
+    // rattrape tout écart en interrogeant directement l'API GitHub pour chaque exécution
+    // encore QUEUED/RUNNING, sur DEV/TEST/PROD indifféremment (la logique ne dépend pas de
+    // l'environnement). initialDelay laisse le temps au service de finir son démarrage.
+    @Scheduled(fixedDelayString = "PT1M", initialDelayString = "PT30S")
+    @Transactional
+    public void reconcilePendingExecutions() {
+        List<PipelineExecution> pending = executionRepository.findByStatusInAndGithubRunIdIsNotNull(
+                List.of(PipelineStatus.QUEUED, PipelineStatus.RUNNING));
+
+        for (PipelineExecution execution : pending) {
+            try {
+                GitHubRunDTO run = gitHubActionsClient.getRun(execution.getGithubRunId());
+                if (applyRunUpdate(execution, run.getStatus(), run.getConclusion())) {
+                    log.info("Réconciliation : exécution {} (run GitHub {}) rattrapée, webhook probablement manqué",
+                            execution.getId(), execution.getGithubRunId());
+                }
+            } catch (Exception ex) {
+                log.warn("Réconciliation : échec de la vérification du run GitHub {} pour l'exécution {} : {}",
+                        execution.getGithubRunId(), execution.getId(), ex.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Applique un statut/conclusion GitHub (venant soit du webhook, soit de la réconciliation
+     * périodique) à une exécution. Idempotent : une exécution déjà dans un état terminal n'est
+     * jamais re-traitée, donc webhook et réconciliation peuvent se chevaucher sans double
+     * notification de ticket-service.
+     *
+     * Appelée uniquement en interne (webhook ou réconciliation), donc toujours dans la
+     * transaction déjà ouverte par l'appelant — pas de @Transactional propre ici,
+     * l'auto-invocation via {@code this} contournerait de toute façon le proxy Spring.
+     *
+     * @return true si l'exécution vient d'être finalisée (utile pour le log de réconciliation)
+     */
+    private boolean applyRunUpdate(PipelineExecution execution, String status, String conclusion) {
+        if (!"completed".equals(status)) {
+            if ("in_progress".equals(status) && execution.getStatus() == PipelineStatus.QUEUED) {
                 execution.setStatus(PipelineStatus.RUNNING);
                 executionRepository.save(execution);
             }
-            return;
+            return false;
         }
 
-        PipelineStatus newStatus = mapConclusion(workflowRun.getConclusion());
+        if (execution.getStatus() == PipelineStatus.SUCCESS
+                || execution.getStatus() == PipelineStatus.FAILED
+                || execution.getStatus() == PipelineStatus.CANCELLED) {
+            return false;
+        }
+
+        PipelineStatus newStatus = mapConclusion(conclusion);
         execution.setStatus(newStatus);
         execution.setCompletedAt(java.time.LocalDateTime.now());
         execution = executionRepository.save(execution);
@@ -174,8 +222,9 @@ public class PipelineServiceImpl implements PipelineService {
             notifyTicketService(execution, "FAILED");
         } else {
             log.info("Run GitHub {} terminé avec conclusion CANCELLED : ticket {} laissé en l'état, non notifié",
-                    workflowRun.getId(), execution.getTicketId());
+                    execution.getGithubRunId(), execution.getTicketId());
         }
+        return true;
     }
 
     private void notifyTicketService(PipelineExecution execution, String status) {
