@@ -6,6 +6,7 @@ import com.pipedevliv.pipeline.dto.GitHubJobDTO;
 import com.pipedevliv.pipeline.dto.GitHubRunDTO;
 import com.pipedevliv.pipeline.dto.GitHubWebhookPayload;
 import com.pipedevliv.pipeline.dto.PipelineExecutionDTO;
+import com.pipedevliv.pipeline.dto.PipelineStatusUpdateDTO;
 import com.pipedevliv.pipeline.dto.PipelineTriggerDTO;
 import com.pipedevliv.pipeline.entity.PipelineExecution;
 import com.pipedevliv.pipeline.entity.PipelineStatus;
@@ -16,6 +17,7 @@ import com.pipedevliv.pipeline.repository.PipelineStageRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -181,8 +183,14 @@ class PipelineServiceImplTest {
         verify(ticketServiceClient).updatePipelineStatus(eq(execution.getTicketId()), any());
     }
 
+    /**
+     * Un run annulé doit sortir le ticket de DEPLOYING_* comme un échec : sans notification,
+     * le ticket restait bloqué en "Déploiement ..." indéfiniment (aucune autre transition ne
+     * l'en sort). Le libellé "CANCELLED" est transmis tel quel pour rester exact dans
+     * l'historique du ticket, même si ticket-service le mappe vers FAILED.
+     */
     @Test
-    void handleWorkflowRunEvent_completedCancelled_doesNotNotifyTicket() {
+    void handleWorkflowRunEvent_completedCancelled_notifiesTicketSoItLeavesDeployingState() {
         PipelineExecution execution = existingExecution(999L, PipelineStatus.RUNNING);
         when(executionRepository.findByGithubRunId(999L)).thenReturn(Optional.of(execution));
         when(executionRepository.save(any(PipelineExecution.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -191,9 +199,12 @@ class PipelineServiceImplTest {
         pipelineService.handleWorkflowRunEvent(payload("completed", 999L, "cancelled"));
 
         assertThat(execution.getStatus()).isEqualTo(PipelineStatus.CANCELLED);
-        verify(ticketServiceClient, never()).updatePipelineStatus(anyLong(), any());
+        verify(eventPublisher).publishFailed(execution);
         verify(eventPublisher, never()).publishCompleted(any());
-        verify(eventPublisher, never()).publishFailed(any());
+
+        ArgumentCaptor<PipelineStatusUpdateDTO> captor = ArgumentCaptor.forClass(PipelineStatusUpdateDTO.class);
+        verify(ticketServiceClient).updatePipelineStatus(eq(execution.getTicketId()), captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo("CANCELLED");
     }
 
     @Test

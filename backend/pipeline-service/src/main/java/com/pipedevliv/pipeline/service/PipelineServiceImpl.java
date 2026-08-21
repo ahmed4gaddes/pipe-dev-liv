@@ -217,12 +217,15 @@ public class PipelineServiceImpl implements PipelineService {
         if (newStatus == PipelineStatus.SUCCESS) {
             eventPublisher.publishCompleted(execution);
             notifyTicketService(execution, "SUCCESS");
-        } else if (newStatus == PipelineStatus.FAILED) {
-            eventPublisher.publishFailed(execution);
-            notifyTicketService(execution, "FAILED");
         } else {
-            log.info("Run GitHub {} terminé avec conclusion CANCELLED : ticket {} laissé en l'état, non notifié",
-                    execution.getGithubRunId(), execution.getTicketId());
+            // FAILED comme CANCELLED doivent sortir le ticket de DEPLOYING_* : c'est le seul
+            // événement qui l'en fait sortir. Ne pas notifier sur CANCELLED (comportement
+            // précédent) laissait le ticket bloqué en "Déploiement ... " indéfiniment, sans
+            // aucun moyen de le relancer. ticket-service mappe tout statut non-"SUCCESS" vers
+            // FAILED, d'où le ticket redevient rejouable (FAILED -> SUBMITTED). Le libellé exact
+            // ("CANCELLED"/"FAILED") est conservé dans l'historique du ticket.
+            eventPublisher.publishFailed(execution);
+            notifyTicketService(execution, newStatus.name());
         }
         return true;
     }
