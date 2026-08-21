@@ -223,7 +223,7 @@ jobs:
         run: |
           cd backend && ./mvnw clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:5.7.0.6970:sonar -DskipITs \
             -Dsonar.host.url=http://localhost:9000 \
-            -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
             -Dsonar.projectKey=pipe-dev-liv
         continue-on-error: true
 
