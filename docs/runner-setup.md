@@ -15,8 +15,11 @@ réglages sont propres à la machine : ils ne sont pas — et ne doivent pas êt
 # Récupérer un token d'enregistrement :
 # GitHub > Settings > Actions > Runners > New self-hosted runner
 cd C:\actions-runner
-.\config.cmd --unattended --url https://github.com/<owner>/<repo> --token <TOKEN> --labels self-hosted
+.\config.cmd --unattended --url https://github.com/<owner>/<repo> --token <TOKEN> --labels self-hosted,<votre-label>
 ```
+
+`<votre-label>` est un identifiant propre à votre machine (par ex. son nom d'hôte en minuscules).
+Il n'est pas décoratif : voir [§3](#3-plusieurs-runners-sur-le-même-dépôt).
 
 Puis le démarrer :
 
@@ -67,7 +70,43 @@ curl http://localhost:2375/version
 
 ---
 
-## 3. Secrets et variables du dépôt
+## 3. Plusieurs runners sur le même dépôt
+
+Chaque développeur peut enregistrer son propre runner : GitHub n'impose aucune limite. Mais ils
+partagent alors **la même file de jobs**, parce qu'ils portent tous le label `self-hosted` que
+demandent les workflows. GitHub attribue le job au premier runner libre, et un déploiement
+déclenché depuis une machine peut donc s'exécuter sur celle de quelqu'un d'autre — qui verra sa
+propre stack redéployée, tandis que l'auteur du déploiement ne verra rien bouger chez lui.
+
+Les *runner groups*, qui servent exactement à cloisonner ça, ne sont disponibles que sur les
+dépôts d'organisation, pas sur un dépôt personnel.
+
+`deploy.yml` résout le problème avec l'input `runner_label` :
+
+```yaml
+runs-on: ${{ inputs.runner_label }}
+```
+
+`pipeline-service` y envoie la valeur de `github.runner-label`, alimentée par `GH_RUNNER_LABEL`
+dans le `.env` de la stack. Renseignez-y le label propre à votre machine — le même que celui
+passé à `config.cmd --labels` — et vos déploiements viseront votre runner, quel que soit le
+nombre d'autres runners en ligne :
+
+```properties
+GH_RUNNER_LABEL=hunter44
+```
+
+La valeur par défaut est `self-hosted`, ce qui reproduit le comportement d'origine (premier
+runner libre). Une instance qui n'envoie pas l'input — un `pipeline-service` plus ancien — reste
+donc fonctionnelle sans modification.
+
+> Pour un test réellement isolé, il reste préférable que les autres runners soient arrêtés :
+> `ci.yml` se déclenche sur `push` et non par `workflow_dispatch`, il ne peut donc pas recevoir
+> d'input et continue de partir sur n'importe quel runner disponible.
+
+---
+
+## 4. Secrets et variables du dépôt
 
 | Secret | Contenu |
 |---|---|
@@ -75,7 +114,7 @@ curl http://localhost:2375/version
 
 ---
 
-## 4. Webhook GitHub (retour de statut des déploiements)
+## 5. Webhook GitHub (retour de statut des déploiements)
 
 `pipeline-service` déclenche les runs via `workflow_dispatch`, et GitHub renvoie leur statut via
 le webhook natif `workflow_run`. Le service tournant en local, il faut un tunnel public :
@@ -100,7 +139,7 @@ Puis configurer le webhook dans **Settings → Webhooks** du dépôt :
 
 ---
 
-## 5. Fichier `.env` de la stack
+## 6. Fichier `.env` de la stack
 
 À la racine du clone (celui pointé par `STACK_DIR`), créer `.env` à partir de `.env.example` et
 renseigner **toutes** les valeurs `CHANGE_ME`. Une en particulier dépend de la machine :
@@ -122,4 +161,5 @@ EUREKA_INSTANCE_HOSTNAME=192.168.1.x
 | `Could not find a valid Docker environment` (Testcontainers) | `DOCKER_HOST`/`DOCKER_API_VERSION` absents, ou exposition TCP désactivée dans Docker Desktop. |
 | `Not authorized` à l'analyse SonarQube | `SONAR_TOKEN` invalide ou de type « User Token » au lieu de « Global Analysis Token ». |
 | Services en crash-loop après un déploiement | `STACK_DIR` pointe sur un clone dont le `.env` contient encore des `CHANGE_ME`. |
+| Déploiement exécuté sur la machine d'un autre développeur | `GH_RUNNER_LABEL` absent du `.env` de la stack, ou laissé à `self-hosted`, alors qu'un autre runner est en ligne. Voir [§3](#3-plusieurs-runners-sur-le-même-dépôt). |
 | Ticket bloqué en « Déploiement ... » | Attendre une minute : la réconciliation rattrape. Si ça persiste, vérifier les logs de `pipeline-service` et l'accès à l'API GitHub. |
