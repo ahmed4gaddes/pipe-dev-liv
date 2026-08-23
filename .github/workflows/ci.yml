@@ -1,6 +1,6 @@
 name: CI Pipeline
 
-# Runner: self-hosted (registered locally per explication_phase_9.md §1) so jobs can reach
+# Runner: self-hosted (enregistrement local : docs/runner-setup.md §1) so jobs can reach
 # localhost:9000 (SonarQube) and the rest of the local stack directly.
 #
 # Security note: self-hosted runners execute workflow code with the runner machine's own
@@ -243,7 +243,7 @@ jobs:
         continue-on-error: true
 
   # Sécurité — OWASP Dependency-Check. Non bloquant cette phase : jamais exécuté sur ce code
-  # avant, un backlog de CVE non trié bloquerait immédiatement toute PR (voir explication_phase_9.md).
+  # avant, un backlog de CVE non trié bloquerait immédiatement toute PR.
   dependency-check:
     runs-on: self-hosted
     steps:

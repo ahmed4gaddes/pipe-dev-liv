@@ -96,21 +96,34 @@ docker compose up -d postgres-users postgres-tickets postgres-pipelines postgres
 cd backend && ./mvnw.cmd -pl discovery-server spring-boot:run
 cd backend && ./mvnw.cmd -pl api-gateway spring-boot:run
 
-# 3. user-service (également hors Docker, voir explication_phase_9.md pour le pourquoi)
-cd backend && ./mvnw.cmd -pl user-service spring-boot:run
+# 3. Les 5 microservices métier (Docker)
+docker compose up -d user-service ticket-service pipeline-service notification-service audit-service
 
-# 4. Les 4 autres microservices (Docker)
-docker compose up -d ticket-service pipeline-service notification-service audit-service
-
-# 5. Frontend
+# 4. Frontend
 cd frontend && npm install && npm run dev   # http://localhost:5173
 ```
+
+> ⚠️ **Ne lancez pas ces 5 services en natif.** Seuls `discovery-server` et `api-gateway` tournent
+> hors Docker ([ADR-0001](docs/adr/0001-microservices-spring-cloud.md), [ADR-0006](docs/adr/0006-no-per-environment-compose-split.md)) ;
+> les 5 autres sont conteneurisés. Une instance native occupe le port du conteneur correspondant
+> (8081→8085), et `deploy.yml` échouera au déploiement suivant sur
+> `ports are not available: ... bind`. Pour déboguer un service dans l'IDE, arrêtez d'abord son
+> conteneur : `docker compose stop ticket-service`.
 
 Puis : ouvrir `http://localhost:5173`, cliquer sur « Se connecter » (redirige vers la vraie page
 de login Keycloak), et se connecter avec un utilisateur du realm `pipe-dev-liv`.
 
-Marche à suivre complète (vérification de santé de chaque service, réinitialisation de mot de
-passe Keycloak, etc.) : [explication_phase_8.md §8](explication_phase_8.md#8-comment-démarrer-et-ouvrir-lapplication-en-local).
+Vérifier que tout répond :
+
+```bash
+curl http://localhost:8761                     # discovery-server
+curl http://localhost:8080/actuator/health     # api-gateway
+curl http://localhost:8081/actuator/health     # user-service
+curl http://localhost:8082/actuator/health     # ticket-service
+curl http://localhost:8083/actuator/health     # pipeline-service
+curl http://localhost:8084/actuator/health     # notification-service
+curl http://localhost:8085/actuator/health     # audit-service
+```
 
 ### Lancer les tests
 
@@ -137,27 +150,19 @@ direct à SonarQube et au reste de la stack locale).
 (variables `STACK_DIR`/`DOCKER_HOST`, secret SonarQube, webhook ngrok) :
 [docs/runner-setup.md](docs/runner-setup.md).
 
-Contexte et décisions de conception : [explication_phase_9.md](explication_phase_9.md).
+Contexte et décisions de conception :
+[ADR-0004](docs/adr/0004-native-github-webhook-over-custom-endpoint.md) (webhook natif plutôt
+qu'un endpoint maison) et
+[ADR-0005](docs/adr/0005-self-hosted-runner-and-webhook-forwarding.md) (runner self-hosted).
 
 ---
 
 ## Documentation
 
-Chaque phase de construction a son propre document détaillé (contexte, décisions, ce qui reste
-ouvert) :
-
-- [Phase 0 — Bootstrap](explication_phase_0.md)
-- [Phase 1](explication_phase_1.md)
-- [Phase 2 — Sécurité / Keycloak](explication_phase_2.md) · [durcissement](explication_phase_2_durcissement_securite.md)
-- [Phase 4 — Ticket Service](explication_phase_4.md)
-- [Phase 5 — Pipeline Service](explication_phase_5.md)
-- [Phase 6 — Notification Service](explication_phase_6.md)
-- [Phase 7 — Audit Service](explication_phase_7.md)
-- [Phase 8 — Frontend](explication_phase_8.md)
-- [Phase 9 — CI/CD](explication_phase_9.md)
-- [Phase 10 — Tests & Documentation](explication_phase_10.md)
-
-Décisions d'architecture non-évidentes, indépendamment de la chronologie des phases :
-[`docs/adr/`](docs/adr/).
-
-Journal de bord complet : [`progress.md`](progress.md).
+- [`docs/adr/`](docs/adr/) — décisions d'architecture non-évidentes et leurs alternatives
+  écartées. C'est la référence à consulter en premier : chaque ADR explique *pourquoi* une
+  chose est faite ainsi, pas seulement comment.
+- [`docs/runner-setup.md`](docs/runner-setup.md) — tout ce qui doit être configuré **par
+  machine** pour faire tourner le pipeline : runner, variables d'environnement, webhook,
+  SonarQube, et un tableau de dépannage des pannes déjà rencontrées.
+- [`progress.md`](progress.md) — journal de bord chronologique de la construction.

@@ -25,4 +25,5 @@ run GitHub Actions), pas comme sélecteur d'un ensemble d'infrastructure différ
 - **Négatif** : le pipeline de déploiement ne peut pas aujourd'hui démontrer une isolation réelle
   entre environnements (même stack, même bases). Si le besoin devient réel (vraies infrastructures
   cibles séparées), ce serait une phase à part entière — pas une extension mineure de la Phase 9 —
-  documenté comme tel dans `explication_phase_9.md`, pas silencieusement oublié.
+  documenté comme tel dans [ADR-0005](0005-self-hosted-runner-and-webhook-forwarding.md) et
+  `docs/runner-setup.md`, pas silencieusement oublié.

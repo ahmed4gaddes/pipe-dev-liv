@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 /**
  * Read-model local, alimenté par la consommation de l'événement {@code user.synced} — pas
  * la source de vérité (User Service l'est). Ne contient que les utilisateurs qui se sont
- * déjà connectés au moins une fois (voir explication_phase_6.md).
+ * déjà connectés au moins une fois (voir docs/adr/0002-rabbitmq-mirror-dto-pattern.md).
  */
 @Entity
 @Table(name = "local_users")

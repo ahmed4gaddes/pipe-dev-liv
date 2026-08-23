@@ -5,7 +5,7 @@ name: Deploy Pipeline
 # est en dur côté backend (application.yml -> github.workflow-file: deploy.yml) : ne pas renommer.
 #
 # Pas d'étape "notify backend" ici : le webhook natif GitHub workflow_run (une fois le webhook
-# du dépôt configuré, voir explication_phase_9.md §5) prévient déjà pipeline-service quand ce run
+# du dépôt configuré, voir docs/runner-setup.md §5) prévient déjà pipeline-service quand ce run
 # se termine — WebhookController + PipelineServiceImpl.handleWorkflowRunEvent gèrent tout,
 # y compris la récupération des jobs/étapes via l'API REST. Un échec de job ici se traduit
 # naturellement en conclusion "failure" -> PipelineStatus.FAILED côté ticket.

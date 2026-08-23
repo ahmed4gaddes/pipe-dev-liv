@@ -25,7 +25,7 @@ import static org.awaitility.Awaitility.await;
  * ticket.status-changed via le RabbitTemplate configuré d'audit-service, et vérifie que le
  * @RabbitListener réel persiste une vraie ligne AuditLog — de bout en bout, real Postgres +
  * real RabbitMQ, aucun mock. Contrairement à notification-service, audit-service journalise
- * même les événements sans "destinataire" évident (voir explication_phase_7.md) : ce test
+ * même les événements sans "destinataire" évident (voir docs/adr/0002-rabbitmq-mirror-dto-pattern.md) : ce test
  * confirme qu'aucune ligne n'est silencieusement filtrée.
  */
 @Testcontainers

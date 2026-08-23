@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * Miroir minimal de {@code TicketResponseDTO} (ticket-service), reçu sur la routing key
- * {@code ticket.created}. Voir explication_phase_6.md pour le mécanisme de type-mapping.
+ * {@code ticket.created}. Voir docs/adr/0002-rabbitmq-mirror-dto-pattern.md pour le type-mapping.
  */
 @Data
 @Builder
