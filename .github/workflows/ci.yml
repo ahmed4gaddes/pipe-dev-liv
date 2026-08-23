@@ -195,7 +195,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
-      - run: cd frontend && npm ci && npm run lint && npm run build
+      # `npm run test` (Vitest) d'abord : sans lui, la suite de tests du frontend annoncée dans
+      # le README n'était exécutée nulle part en CI — elle ne pouvait donc que se dégrader
+      # silencieusement, contrairement aux tests backend que chaque job build-* fait tourner.
+      # Ordre identique à celui documenté dans le README, et échec au plus tôt.
+      - run: cd frontend && npm ci && npm run test && npm run lint && npm run build
         shell: bash
 
   # Analyse SonarQube — le scanner Maven (pas l'action générique SonarSource/sonarqube-scan-action,
