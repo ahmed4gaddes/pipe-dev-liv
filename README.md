@@ -96,18 +96,34 @@ docker compose up -d postgres-users postgres-tickets postgres-pipelines postgres
 cd backend && ./mvnw.cmd -pl discovery-server spring-boot:run
 cd backend && ./mvnw.cmd -pl api-gateway spring-boot:run
 
-# 3. user-service (également hors Docker, voir explication_phase_9.md pour le pourquoi)
-cd backend && ./mvnw.cmd -pl user-service spring-boot:run
+# 3. Les 5 microservices métier (Docker)
+docker compose up -d user-service ticket-service pipeline-service notification-service audit-service
 
-# 4. Les 4 autres microservices (Docker)
-docker compose up -d ticket-service pipeline-service notification-service audit-service
-
-# 5. Frontend
+# 4. Frontend
 cd frontend && npm install && npm run dev   # http://localhost:5173
 ```
 
+> ⚠️ **Ne lancez pas ces 5 services en natif.** Seuls `discovery-server` et `api-gateway` tournent
+> hors Docker ([ADR-0001](docs/adr/0001-microservices-spring-cloud.md), [ADR-0006](docs/adr/0006-no-per-environment-compose-split.md)) ;
+> les 5 autres sont conteneurisés. Une instance native occupe le port du conteneur correspondant
+> (8081→8085), et `deploy.yml` échouera au déploiement suivant sur
+> `ports are not available: ... bind`. Pour déboguer un service dans l'IDE, arrêtez d'abord son
+> conteneur : `docker compose stop ticket-service`.
+
 Puis : ouvrir `http://localhost:5173`, cliquer sur « Se connecter » (redirige vers la vraie page
 de login Keycloak), et se connecter avec un utilisateur du realm `pipe-dev-liv`.
+
+Vérifier que tout répond :
+
+```bash
+curl http://localhost:8761                     # discovery-server
+curl http://localhost:8080/actuator/health     # api-gateway
+curl http://localhost:8081/actuator/health     # user-service
+curl http://localhost:8082/actuator/health     # ticket-service
+curl http://localhost:8083/actuator/health     # pipeline-service
+curl http://localhost:8084/actuator/health     # notification-service
+curl http://localhost:8085/actuator/health     # audit-service
+```
 
 Marche à suivre complète (vérification de santé de chaque service, réinitialisation de mot de
 passe Keycloak, etc.) : [explication_phase_8.md §8](explication_phase_8.md#8-comment-démarrer-et-ouvrir-lapplication-en-local).
