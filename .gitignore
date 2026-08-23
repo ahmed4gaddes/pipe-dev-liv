@@ -3,9 +3,17 @@
 # ==============================================================================
 
 # === Variables d'environnement (SECRETS) ===
-.env
-.env.local
-.env.*.local
+# Motif volontairement large : .env.bak, .env.backup, .env.save, .env.old, .env.prod...
+# contiennent exactement les mêmes secrets que .env (mots de passe des bases, PAT GitHub,
+# secret de webhook) et n'étaient couverts par aucune règle — un `git add -A` après une
+# sauvegarde manuelle suffisait à les publier. Seul le template est versionné.
+.env*
+!.env.example
+# Exception nécessaire : les .env.properties de src/main/resources sont de la configuration
+# Spring versionnée, pas des secrets. Sans cette ligne, .env* les attrape — les fichiers
+# existants resteraient suivis (déjà dans l'index), mais celui d'un nouveau service serait
+# silencieusement exclu du dépôt.
+!.env.properties
 
 # === IDE ===
 .idea/
