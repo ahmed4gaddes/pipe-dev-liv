@@ -112,6 +112,23 @@ renseigner **toutes** les valeurs `CHANGE_ME`. Une en particulier dépend de la 
 EUREKA_INSTANCE_HOSTNAME=192.168.1.x
 ```
 
+Cette IP étant attribuée par DHCP, elle change (redémarrage du routeur, changement de réseau).
+Quand elle change, les conteneurs continuent de s'annoncer à l'ancienne adresse : la gateway les
+appelle dans le vide, les requêtes partent en timeout et **l'application n'affiche plus rien tout
+en étant très lente**. Plutôt que de la corriger à la main, utiliser :
+
+```powershell
+# Vérifier sans rien modifier (code de sortie 1 si désynchronisé)
+.\scripts\sync-lan-ip.ps1 -Check
+
+# Corriger .env avec l'IP actuelle
+.\scripts\sync-lan-ip.ps1
+```
+
+Puis recréer les conteneurs applicatifs pour que le changement soit pris en compte. Le réflexe :
+lancer ce script **avant chaque démarrage de la stack**, et dès que l'application devient
+anormalement lente.
+
 ---
 
 ## Dépannage

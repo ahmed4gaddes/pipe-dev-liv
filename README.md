@@ -88,6 +88,16 @@ chacun leur propre queue et leurs propres DTO miroirs (voir [ADR-0002](docs/adr/
 
 Prérequis : Docker Desktop, JDK 17, Node 20+.
 
+Créer `.env` à partir de `.env.example` et renseigner les valeurs `CHANGE_ME`. `EUREKA_INSTANCE_HOSTNAME`
+doit valoir l'IP LAN de la machine ; comme elle est attribuée par DHCP et change, l'aligner avec :
+
+```powershell
+.\scripts\sync-lan-ip.ps1
+```
+
+Si l'application devient très lente et n'affiche plus rien, c'est le premier réflexe : les
+conteneurs s'annoncent alors auprès d'Eureka à une adresse qui n'est plus celle de la machine.
+
 ```bash
 # 1. Infrastructure (Postgres x5, Keycloak, RabbitMQ, SonarQube, Zipkin)
 docker compose up -d postgres-users postgres-tickets postgres-pipelines postgres-notifications postgres-audit postgres-keycloak keycloak rabbitmq
