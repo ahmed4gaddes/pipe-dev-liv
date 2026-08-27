@@ -39,6 +39,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     restart: unless-stopped
 
   postgres-tickets:
@@ -57,6 +58,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     restart: unless-stopped
 
   postgres-pipelines:
@@ -75,6 +77,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     restart: unless-stopped
 
   postgres-notifications:
@@ -93,6 +96,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     restart: unless-stopped
 
   postgres-audit:
@@ -111,6 +115,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     restart: unless-stopped
 
   # =====================================================================
@@ -131,6 +136,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     restart: unless-stopped
 
   keycloak:
@@ -173,6 +179,11 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
+      # start_period : sans lui, les echecs pendant le demarrage sont decomptes des
+      # retries et RabbitMQ (lent a booter, surtout quand les builds Maven paralleles
+      # saturent la machine) est declare unhealthy avant d etre pret — les services
+      # qui en dependent refusent alors de demarrer.
+      start_period: 90s
     restart: unless-stopped
 
   # =====================================================================
@@ -350,6 +361,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     restart: unless-stopped
 
   sonarqube:
