@@ -46,7 +46,12 @@ public class PipelineServiceImpl implements PipelineService {
     @Override
     @Transactional
     public PipelineExecutionDTO triggerPipeline(PipelineTriggerDTO dto, String triggeredByUserId) {
-        String branch = (dto.getGitBranch() == null || dto.getGitBranch().trim().isEmpty()) ? "main" : dto.getGitBranch();
+        // Le trim porte sur la VALEUR, pas seulement sur le test : une branche saisie avec une
+        // espace parasite ("develop ") passait le contrôle puis partait telle quelle à GitHub,
+        // qui répondait 422 "No ref found for: develop " — erreur remontée à l'utilisateur sous
+        // une forme opaque, sans rapport visible avec un espace invisible dans le formulaire.
+        String requested = dto.getGitBranch() == null ? "" : dto.getGitBranch().trim();
+        String branch = requested.isEmpty() ? "main" : requested;
 
         PipelineExecution execution = PipelineExecution.builder()
                 .ticketId(dto.getTicketId())

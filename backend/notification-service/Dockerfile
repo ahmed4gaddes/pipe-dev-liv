@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # === Stage 1 : Build avec Maven ===
 FROM maven:3.9-eclipse-temurin-17-alpine AS build
 WORKDIR /workspace
@@ -18,7 +19,14 @@ COPY common-lib/src common-lib/src
 COPY notification-service/src notification-service/src
 
 # Build : Maven gère l'ordre (common-lib → notification-service)
-RUN mvn package -pl notification-service -am -DskipTests -B
+# --mount=type=cache : le depot Maven est partage entre les 5 services et conserve entre
+# deux builds. Sans lui chaque service retelecharge tout l arbre de dependances, et les
+# builds paralleles se font couper par Maven Central ("Remote host terminated the
+# handshake", PluginResolutionException). retryHandler couvre les coupures residuelles.
+RUN --mount=type=cache,target=/root/.m2,id=pipe-dev-liv-m2 \
+    mvn package -pl notification-service -am -DskipTests -B \
+      -Dmaven.wagon.http.retryHandler.count=3 \
+      -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
 
 # === Stage 2 : Image runtime légère (JRE seul) ===
 FROM eclipse-temurin:17-jre-alpine

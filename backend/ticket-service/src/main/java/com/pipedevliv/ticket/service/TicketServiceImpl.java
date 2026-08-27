@@ -62,8 +62,10 @@ public class TicketServiceImpl implements TicketService {
                 .status(TicketStatus.DRAFT)
                 .priority(dto.getPriority())
                 .targetEnvironment(dto.getTargetEnvironment())
-                .gitBranch(dto.getGitBranch())
-                .gitCommitSha(dto.getGitCommitSha())
+                // Normalisé : une espace parasite en fin de saisie ("develop ") est invisible dans
+                // le formulaire mais fait échouer le déclenchement GitHub en 422 "No ref found".
+                .gitBranch(trimOrNull(dto.getGitBranch()))
+                .gitCommitSha(trimOrNull(dto.getGitCommitSha()))
                 .createdByUserId(createdByUserId)
                 .build();
         ticket = ticketRepository.save(ticket);
@@ -107,10 +109,10 @@ public class TicketServiceImpl implements TicketService {
             ticket.setTargetEnvironment(dto.getTargetEnvironment());
         }
         if (dto.getGitBranch() != null) {
-            ticket.setGitBranch(dto.getGitBranch());
+            ticket.setGitBranch(trimOrNull(dto.getGitBranch()));
         }
         if (dto.getGitCommitSha() != null) {
-            ticket.setGitCommitSha(dto.getGitCommitSha());
+            ticket.setGitCommitSha(trimOrNull(dto.getGitCommitSha()));
         }
         if (dto.getAssignedToUserId() != null) {
             ticket.setAssignedToUserId(dto.getAssignedToUserId());
@@ -309,6 +311,15 @@ public class TicketServiceImpl implements TicketService {
                 .countByStatus(byStatus)
                 .countByPriority(byPriority)
                 .build();
+    }
+
+    /** Rend null une saisie vide ou uniquement composée d'espaces, plutôt que de la stocker telle quelle. */
+    private String trimOrNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private Ticket findTicketOrThrow(Long id) {

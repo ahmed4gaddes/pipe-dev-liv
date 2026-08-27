@@ -97,6 +97,50 @@ class PipelineServiceImplTest {
         assertThat(result.getGithubRunId()).isNull();
     }
 
+    /**
+     * Une branche saisie avec une espace parasite doit être nettoyée avant l'appel à GitHub :
+     * envoyée telle quelle, elle provoque un 422 "No ref found for: develop " côté API, remonté
+     * à l'utilisateur sous une forme sans rapport visible avec la cause.
+     */
+    @Test
+    void triggerPipeline_branchWithSurroundingWhitespace_isTrimmedBeforeCallingGitHub() {
+        when(executionRepository.save(any(PipelineExecution.class))).thenAnswer(inv -> {
+            PipelineExecution e = inv.getArgument(0);
+            if (e.getId() == null) {
+                e.setId(1L);
+            }
+            return e;
+        });
+        when(gitHubActionsClient.findLatestRunId("develop")).thenReturn(Optional.of(999L));
+
+        PipelineTriggerDTO dto = PipelineTriggerDTO.builder()
+                .ticketId(5L).targetEnvironment("DEV").gitBranch("  develop  ").build();
+
+        PipelineExecutionDTO result = pipelineService.triggerPipeline(dto, "tl-1");
+
+        verify(gitHubActionsClient).triggerWorkflow(eq("develop"), any());
+        assertThat(result.getGitBranch()).isEqualTo("develop");
+    }
+
+    @Test
+    void triggerPipeline_blankBranch_fallsBackToMain() {
+        when(executionRepository.save(any(PipelineExecution.class))).thenAnswer(inv -> {
+            PipelineExecution e = inv.getArgument(0);
+            if (e.getId() == null) {
+                e.setId(1L);
+            }
+            return e;
+        });
+        when(gitHubActionsClient.findLatestRunId("main")).thenReturn(Optional.empty());
+
+        PipelineTriggerDTO dto = PipelineTriggerDTO.builder()
+                .ticketId(5L).targetEnvironment("DEV").gitBranch("   ").build();
+
+        pipelineService.triggerPipeline(dto, "tl-1");
+
+        verify(gitHubActionsClient).triggerWorkflow(eq("main"), any());
+    }
+
     @Test
     void getExecution_notFound_throws() {
         when(executionRepository.findById(99L)).thenReturn(Optional.empty());
