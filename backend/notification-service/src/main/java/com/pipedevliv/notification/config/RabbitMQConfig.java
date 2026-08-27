@@ -25,7 +25,7 @@ import java.util.Map;
  * l'exchange partagé, plus un {@link DefaultJackson2JavaTypeMapper} qui fait correspondre
  * le FQCN du producteur (stocké dans le header {@code __TypeId__} par Jackson2JsonMessageConverter)
  * à un DTO miroir local — notification-service n'a pas les classes de ticket-service /
- * pipeline-service / user-service sur son classpath. Voir explication_phase_6.md.
+ * pipeline-service / user-service sur son classpath. Voir docs/adr/0002-rabbitmq-mirror-dto-pattern.md.
  */
 @Configuration
 public class RabbitMQConfig {

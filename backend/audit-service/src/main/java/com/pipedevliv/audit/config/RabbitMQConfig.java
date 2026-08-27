@@ -25,7 +25,7 @@ import java.util.Map;
  * {@link DefaultJackson2JavaTypeMapper} qui fait correspondre le FQCN du producteur (stocké
  * dans le header {@code __TypeId__} par Jackson2JsonMessageConverter) à un DTO miroir local —
  * même mécanisme, copie indépendante (audit-service n'a pas les classes de notification-service
- * ni des autres services sur son classpath). Voir explication_phase_7.md.
+ * ni des autres services sur son classpath). Voir docs/adr/0002-rabbitmq-mirror-dto-pattern.md.
  */
 @Configuration
 public class RabbitMQConfig {

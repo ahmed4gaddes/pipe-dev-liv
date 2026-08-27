@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 
 /**
  * Miroir de {@code TicketResponseDTO} (ticket-service), reçu sur la routing key
- * {@code ticket.created}. Voir explication_phase_7.md pour le mécanisme de type-mapping
+ * {@code ticket.created}. Voir docs/adr/0002-rabbitmq-mirror-dto-pattern.md pour le type-mapping
  * (identique à celui introduit par notification-service en Phase 6).
  */
 @Data

@@ -1,6 +1,6 @@
 name: CI Pipeline
 
-# Runner: self-hosted (registered locally per explication_phase_9.md §1) so jobs can reach
+# Runner: self-hosted (enregistrement local : docs/runner-setup.md §1) so jobs can reach
 # localhost:9000 (SonarQube) and the rest of the local stack directly.
 #
 # Security note: self-hosted runners execute workflow code with the runner machine's own
@@ -195,7 +195,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
-      - run: cd frontend && npm ci && npm run lint && npm run build
+      # `npm run test` (Vitest) d'abord : sans lui, la suite de tests du frontend annoncée dans
+      # le README n'était exécutée nulle part en CI — elle ne pouvait donc que se dégrader
+      # silencieusement, contrairement aux tests backend que chaque job build-* fait tourner.
+      # Ordre identique à celui documenté dans le README, et échec au plus tôt.
+      - run: cd frontend && npm ci && npm run test && npm run lint && npm run build
         shell: bash
 
   # Analyse SonarQube — le scanner Maven (pas l'action générique SonarSource/sonarqube-scan-action,
@@ -218,17 +222,32 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { java-version: '17', distribution: 'temurin' }
+      # Le token d'analyse est propre à CHAQUE machine : chaque développeur fait tourner son
+      # propre SonarQube sur localhost:9000, et un token généré par l'un n'est pas reconnu par
+      # l'instance de l'autre ("Not authorized"). Le secret du dépôt, lui, est unique et partagé
+      # — il ne peut donc être valide que pour une seule des machines.
+      #
+      # SONAR_TOKEN est donc lu dans l'environnement du runner (voir docs/runner-setup.md §2),
+      # avec repli sur le secret du dépôt pour tout runner qui ne le définit pas : le
+      # comportement reste inchangé pour une machine déjà configurée de cette façon.
       - name: Analyse SonarQube (reactor complet)
         shell: bash
+        env:
+          SONAR_TOKEN_REPO: ${{ secrets.SONAR_TOKEN }}
         run: |
+          TOKEN="${SONAR_TOKEN:-$SONAR_TOKEN_REPO}"
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Aucun token SonarQube. Définir SONAR_TOKEN dans l'environnement du runner (voir docs/runner-setup.md §2) ou le secret SONAR_TOKEN du dépôt."
+            exit 1
+          fi
           cd backend && ./mvnw clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:5.7.0.6970:sonar -DskipITs \
             -Dsonar.host.url=http://localhost:9000 \
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.login="$TOKEN" \
             -Dsonar.projectKey=pipe-dev-liv
         continue-on-error: true
 
   # Sécurité — OWASP Dependency-Check. Non bloquant cette phase : jamais exécuté sur ce code
-  # avant, un backlog de CVE non trié bloquerait immédiatement toute PR (voir explication_phase_9.md).
+  # avant, un backlog de CVE non trié bloquerait immédiatement toute PR.
   dependency-check:
     runs-on: self-hosted
     steps:

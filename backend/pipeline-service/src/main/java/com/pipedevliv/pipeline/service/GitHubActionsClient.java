@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,23 +34,34 @@ public class GitHubActionsClient {
     private final String owner;
     private final String repo;
     private final String workflowFile;
+    private final String runnerLabel;
 
     public GitHubActionsClient(
             RestClient githubRestClient,
             @Value("${github.owner}") String owner,
             @Value("${github.repo}") String repo,
-            @Value("${github.workflow-file}") String workflowFile) {
+            @Value("${github.workflow-file}") String workflowFile,
+            @Value("${github.runner-label}") String runnerLabel) {
         this.restClient = githubRestClient;
         this.owner = owner;
         this.repo = repo;
         this.workflowFile = workflowFile;
+        this.runnerLabel = runnerLabel;
     }
 
+    /**
+     * Le label du runner est ajouté ici plutôt que par l'appelant : c'est une préoccupation de
+     * transport (quelle machine exécute le run), pas une donnée du domaine pipeline. Sans lui,
+     * deux développeurs ayant chacun enregistré un runner sur le dépôt se partagent la même file
+     * de jobs et un déploiement peut partir sur la mauvaise machine.
+     */
     public void triggerWorkflow(String ref, Map<String, String> inputs) {
+        Map<String, String> workflowInputs = new HashMap<>(inputs);
+        workflowInputs.put("runner_label", runnerLabel);
         try {
             restClient.post()
                     .uri("/repos/{owner}/{repo}/actions/workflows/{workflowFile}/dispatches", owner, repo, workflowFile)
-                    .body(Map.of("ref", ref, "inputs", inputs))
+                    .body(Map.of("ref", ref, "inputs", workflowInputs))
                     .retrieve()
                     .toBodilessEntity();
         } catch (RestClientException ex) {

@@ -14,3 +14,4 @@ github:
   repo: test-repo
   webhook-secret: test-webhook-secret
   workflow-file: deploy.yml
+  runner-label: self-hosted

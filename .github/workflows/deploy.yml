@@ -5,13 +5,21 @@ name: Deploy Pipeline
 # est en dur côté backend (application.yml -> github.workflow-file: deploy.yml) : ne pas renommer.
 #
 # Pas d'étape "notify backend" ici : le webhook natif GitHub workflow_run (une fois le webhook
-# du dépôt configuré, voir explication_phase_9.md §5) prévient déjà pipeline-service quand ce run
+# du dépôt configuré, voir docs/runner-setup.md §5) prévient déjà pipeline-service quand ce run
 # se termine — WebhookController + PipelineServiceImpl.handleWorkflowRunEvent gèrent tout,
 # y compris la récupération des jobs/étapes via l'API REST. Un échec de job ici se traduit
 # naturellement en conclusion "failure" -> PipelineStatus.FAILED côté ticket.
 #
-# runs-on: self-hosted -> ce job tourne sur la même machine que le reste de la stack locale,
+# Le job tourne sur un runner self-hosted, sur la même machine que le reste de la stack locale,
 # donc "Health check" peut réellement joindre http://localhost:8080.
+#
+# runner_label : quand plusieurs développeurs enregistrent chacun leur runner sur ce dépôt, ils
+# partagent tous le label "self-hosted" et GitHub attribue le job au premier runner libre — un
+# déploiement déclenché par l'un peut donc s'exécuter sur la machine de l'autre, et redéployer
+# la mauvaise stack. Chaque instance de pipeline-service envoie ici le label de SA machine
+# (github.runner-label, alimenté par GH_RUNNER_LABEL dans son .env) pour viser son propre
+# runner. La valeur par défaut "self-hosted" conserve l'ancien comportement pour toute
+# instance qui n'envoie pas l'input.
 
 on:
   workflow_dispatch:
@@ -26,10 +34,15 @@ on:
         description: 'ID du ticket qui déclenche ce déploiement'
         required: true
         type: string
+      runner_label:
+        description: 'Label du runner devant exécuter ce déploiement (voir en-tête du fichier)'
+        required: false
+        type: string
+        default: self-hosted
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: ${{ inputs.runner_label }}
     steps:
       - uses: actions/checkout@v4
 

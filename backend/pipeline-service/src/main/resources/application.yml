@@ -56,6 +56,9 @@ github:
   repo: ${GH_REPO}
   webhook-secret: ${GH_WEBHOOK_SECRET}
   workflow-file: deploy.yml
+  # Label du runner self-hosted qui doit executer les deploiements de CETTE machine.
+  # Defaut "self-hosted" = premier runner libre du depot (comportement historique).
+  runner-label: ${GH_RUNNER_LABEL:self-hosted}
 
 logging:
   level:

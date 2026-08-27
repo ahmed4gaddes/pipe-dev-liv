@@ -32,7 +32,7 @@ class GitHubActionsClientTest {
     void setUp() {
         RestClient.Builder builder = RestClient.builder().baseUrl("https://api.github.com");
         server = MockRestServiceServer.bindTo(builder).build();
-        client = new GitHubActionsClient(builder.build(), "test-owner", "test-repo", "deploy.yml");
+        client = new GitHubActionsClient(builder.build(), "test-owner", "test-repo", "deploy.yml", "test-runner");
     }
 
     @Test
@@ -43,6 +43,21 @@ class GitHubActionsClientTest {
                 .andRespond(withNoContent());
 
         client.triggerWorkflow("main", Map.of("environment", "dev", "ticket_id", "5"));
+
+        server.verify();
+    }
+
+    // Le label conditionne la machine qui exécutera le déploiement : s'il n'est pas transmis,
+    // GitHub retombe sur le premier runner libre du dépôt, potentiellement celui d'un autre
+    // développeur, qui redéploierait alors sa propre stack.
+    @Test
+    void triggerWorkflow_addsConfiguredRunnerLabelToInputs() {
+        server.expect(requestTo("https://api.github.com/repos/test-owner/test-repo/actions/workflows/deploy.yml/dispatches"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().json("{\"inputs\":{\"ticket_id\":\"5\",\"runner_label\":\"test-runner\"}}"))
+                .andRespond(withNoContent());
+
+        client.triggerWorkflow("main", Map.of("ticket_id", "5"));
 
         server.verify();
     }
