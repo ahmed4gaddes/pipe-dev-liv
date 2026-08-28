@@ -88,15 +88,29 @@ chacun leur propre queue et leurs propres DTO miroirs (voir [ADR-0002](docs/adr/
 
 Prérequis : Docker Desktop, JDK 17, Node 20+.
 
-Créer `.env` à partir de `.env.example` et renseigner les valeurs `CHANGE_ME`. `EUREKA_INSTANCE_HOSTNAME`
-doit valoir l'IP LAN de la machine ; comme elle est attribuée par DHCP et change, l'aligner avec :
+Créer `.env` à partir de `.env.example` et renseigner les valeurs `CHANGE_ME`.
+
+### Tout démarrer en une commande
 
 ```powershell
-.\scripts\sync-lan-ip.ps1
+.\scripts\start-all.ps1
+cd frontend ; npm run dev     # puis http://localhost:5173
 ```
 
-Si l'application devient très lente et n'affiche plus rien, c'est le premier réflexe : les
-conteneurs s'annoncent alors auprès d'Eureka à une adresse qui n'est plus celle de la machine.
+Le script enchaîne, en vérifiant chaque étape : alignement de l'IP LAN, infrastructure Docker,
+`discovery-server` et `api-gateway` (hors Docker), les 5 microservices, le runner GitHub Actions.
+Il affiche un bilan `[OK]`/`[KO]` par composant. Il est **idempotent** : ce qui tourne déjà est
+conservé, donc le relancer après un démarrage partiel est sans risque.
+
+Options : `-SkipNative` si vous lancez `discovery-server`/`api-gateway` depuis IntelliJ,
+`-SkipRunner` si vous ne déclenchez aucun déploiement.
+
+Si l'application devient très lente et n'affiche plus rien, relancer le script suffit
+généralement : il réaligne `EUREKA_INSTANCE_HOSTNAME`, dont la valeur périme à chaque changement
+d'IP DHCP (les conteneurs s'annoncent alors auprès d'Eureka à une adresse qui n'est plus celle de
+la machine). Pour ne traiter que ce point : `.\scripts\sync-lan-ip.ps1`.
+
+### Démarrage manuel, étape par étape
 
 ```bash
 # 1. Infrastructure (Postgres x5, Keycloak, RabbitMQ, SonarQube, Zipkin)
