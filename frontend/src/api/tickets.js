@@ -8,11 +8,12 @@ export const ticketKeys = {
   stats: ['tickets', 'stats'],
 };
 
-export function useTickets(filters = {}, page = 0, size = 20) {
+export function useTickets(filters = {}, page = 0, size = 20, options = {}) {
   return useQuery({
     queryKey: ticketKeys.list(filters, page),
     queryFn: () => client.get('/api/tickets', { params: { page, size, ...filters } }),
     placeholderData: (prev) => prev,
+    ...options,
   });
 }
 

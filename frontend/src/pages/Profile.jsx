@@ -1,4 +1,5 @@
 import { useCurrentUser } from '../api/users';
+import { useTickets } from '../api/tickets';
 import Card from '../components/ui/Card';
 import Avatar from '../components/ui/Avatar';
 import { RoleBadge } from '../components/ui/Badge';
@@ -7,6 +8,13 @@ import './Profile.css';
 
 export default function Profile() {
   const { data: user, isLoading } = useCurrentUser();
+  // size=1 : on ne veut que le total (totalElements), pas la liste.
+  const { data: createdTickets } = useTickets(
+    { createdByUserId: user?.keycloakId },
+    0,
+    1,
+    { enabled: !!user?.keycloakId },
+  );
 
   if (isLoading) {
     return <Card><SkeletonRows rows={4} /></Card>;
@@ -22,8 +30,8 @@ export default function Profile() {
           {(user?.roles ?? '').split(',').filter(Boolean).map((r) => <RoleBadge key={r} role={r} />)}
         </div>
         <dl className="profile-meta">
-          <dt>Identifiant Keycloak</dt>
-          <dd>{user?.keycloakId}</dd>
+          <dt>Tickets créés</dt>
+          <dd>{createdTickets?.totalElements ?? '—'}</dd>
           <dt>Membre depuis</dt>
           <dd>{user?.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : '—'}</dd>
         </dl>

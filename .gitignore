@@ -45,3 +45,9 @@ docker-compose.override.yml
 # === Logs ===
 *.log
 logs/
+
+# === Notes personnelles (soutenance) et fichiers locaux de Claude Code ===
+explication.md
+docs/presentation-jury.md
+.claude/
+CLAUDE.local.md
